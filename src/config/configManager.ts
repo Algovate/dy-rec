@@ -1,6 +1,20 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_CONFIG_PATH,
+  DEFAULT_DETECTION_MODE,
+  DEFAULT_QUALITY,
+  DEFAULT_OUTPUT_DIR,
+  DEFAULT_FORMAT,
+  DEFAULT_SEGMENT_DURATION,
+  DEFAULT_WATCH_INTERVAL,
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_RETRY_DELAY,
+  VALID_DETECTION_MODES,
+  VALID_QUALITIES,
+} from '../constants.js';
+import { ConfigurationError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,7 +71,7 @@ export class ConfigManager {
     // 默认配置文件路径
     if (!configPath) {
       const projectRoot = path.resolve(__dirname, '../..');
-      configPath = path.join(projectRoot, 'config', 'config.json');
+      configPath = path.join(projectRoot, DEFAULT_CONFIG_PATH);
     }
     this.configPath = configPath;
   }
@@ -77,7 +91,7 @@ export class ConfigManager {
         await this.createDefaultConfig();
         return await this.loadConfig();
       }
-      throw new Error(`加载配置文件失败: ${error.message}`);
+      throw new ConfigurationError(`加载配置文件失败: ${error.message}`, error);
     }
   }
 
@@ -86,22 +100,22 @@ export class ConfigManager {
    */
   private async createDefaultConfig(): Promise<void> {
     const defaultConfig: AppConfig = {
-      mode: 'hybrid',
+      mode: DEFAULT_DETECTION_MODE,
       output: {
-        dir: './downloads',
-        format: 'mp4',
-        segmentDuration: 3600,
+        dir: DEFAULT_OUTPUT_DIR,
+        format: DEFAULT_FORMAT,
+        segmentDuration: DEFAULT_SEGMENT_DURATION,
         segmentEnabled: false,
       },
       recording: {
-        quality: 'origin',
+        quality: DEFAULT_QUALITY,
         reconnect: true,
-        maxRetries: 3,
-        retryDelay: 5000,
+        maxRetries: DEFAULT_RECONNECT_MAX_RETRIES,
+        retryDelay: DEFAULT_RECONNECT_RETRY_DELAY,
       },
       watch: {
         enabled: false,
-        interval: 60,
+        interval: DEFAULT_WATCH_INTERVAL,
         autoStart: true,
       },
       rooms: [],
@@ -134,15 +148,18 @@ export class ConfigManager {
     }
 
     // 验证 mode
-    if (!['api', 'browser', 'hybrid'].includes(config.mode)) {
-      throw new Error(`无效的 mode: ${config.mode}，必须是 api、browser 或 hybrid`);
+    if (!VALID_DETECTION_MODES.includes(config.mode as (typeof VALID_DETECTION_MODES)[number])) {
+      throw new ConfigurationError(
+        `无效的 mode: ${config.mode}，必须是 ${VALID_DETECTION_MODES.join('、')}`
+      );
     }
 
     // 验证 quality
     if (config.recording.quality) {
-      const validQualities = ['origin', 'uhd', 'hd', 'sd', 'ld'];
-      if (!validQualities.includes(config.recording.quality)) {
-        throw new Error(`无效的 quality: ${config.recording.quality}`);
+      if (!VALID_QUALITIES.includes(config.recording.quality as (typeof VALID_QUALITIES)[number])) {
+        throw new ConfigurationError(
+          `无效的 quality: ${config.recording.quality}，必须是 ${VALID_QUALITIES.join('、')}`
+        );
       }
     }
   }

@@ -1,5 +1,6 @@
 import { DouyinApi, DouyinApiOptions, RoomInfo } from '../api/douyinApi.js';
 import chalk from 'chalk';
+import { ROOM_STATUS_LIVE, DEFAULT_WATCH_INTERVAL } from '../constants.js';
 
 export interface RoomWatcherOptions {
   cookies?: string;
@@ -49,7 +50,7 @@ export class RoomWatcher {
       proxy: options.proxy,
     };
     this.apiClient = new DouyinApi(apiOptions);
-    this.interval = options.interval || 60000; // 默认 60 秒
+    this.interval = options.interval || DEFAULT_WATCH_INTERVAL * 1000; // Convert seconds to milliseconds
     this.autoStart = options.autoStart !== false;
     this.onLiveStart = options.onLiveStart;
     this.onLiveEnd = options.onLiveEnd;
@@ -108,7 +109,7 @@ export class RoomWatcher {
   private async checkRoom(roomId: string): Promise<void> {
     try {
       const roomInfo = await this.apiClient.getRoomInfo(roomId);
-      const isLive = roomInfo.status === 2; // 2 = 直播中
+      const isLive = roomInfo.status === ROOM_STATUS_LIVE;
       const isRecording = this.recordingRooms.has(roomId);
 
       if (isLive && !isRecording && this.autoStart) {

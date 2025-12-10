@@ -1,4 +1,5 @@
 import puppeteer, { Browser, Page, PuppeteerLaunchOptions } from 'puppeteer';
+import { DEFAULT_BROWSER_USER_AGENT, DOUYIN_LIVE_BASE_URL } from '../constants.js';
 
 export interface BrowserControllerOptions {
   headless?: boolean;
@@ -21,9 +22,7 @@ export class BrowserController {
 
   constructor(options: BrowserControllerOptions = {}) {
     this.onStreamDetected = options.onStreamDetected;
-    this.userAgent =
-      options.userAgent ||
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    this.userAgent = options.userAgent || DEFAULT_BROWSER_USER_AGENT;
     this.headless = options.headless !== undefined ? options.headless : false;
   }
 
@@ -119,7 +118,7 @@ export class BrowserController {
       throw new Error('Page not initialized');
     }
 
-    const url = `https://live.douyin.com/${roomId}`;
+    const url = `${DOUYIN_LIVE_BASE_URL}/${roomId}`;
     console.log(`[Browser] Navigating to: ${url}`);
 
     try {

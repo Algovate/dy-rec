@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureDir } from '../utils.js';
+import { DEFAULT_BROWSER_USER_AGENT, DEFAULT_DOWNLOAD_TIMEOUT } from '../constants.js';
 
 // 匹配抖音视频 CDN 地址
 const MEDIA_HOST_PATTERN = /^https?:\/\/v\d+-web\.douyinvod\.com\/[^\s'"]+/;
@@ -34,10 +35,8 @@ export class VideoDownloader {
 
   constructor(options: VideoDownloaderOptions = {}) {
     this.headless = options.headless !== undefined ? options.headless : true;
-    this.timeout = options.timeout || 30000;
-    this.userAgent =
-      options.userAgent ||
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+    this.timeout = options.timeout || DEFAULT_DOWNLOAD_TIMEOUT;
+    this.userAgent = options.userAgent || DEFAULT_BROWSER_USER_AGENT;
   }
 
   /**

@@ -51,18 +51,4 @@ export abstract class BaseRecorder {
       elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
     };
   }
-
-  /**
-   * Parse timemark string to seconds
-   */
-  protected parseTimemark(timemark: string): number {
-    const parts = timemark.split(':');
-    if (parts.length === 3) {
-      const hours = parseFloat(parts[0]);
-      const minutes = parseFloat(parts[1]);
-      const seconds = parseFloat(parts[2]);
-      return hours * 3600 + minutes * 60 + seconds;
-    }
-    return 0;
-  }
 }

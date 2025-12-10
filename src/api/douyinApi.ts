@@ -1,6 +1,12 @@
 import axios, { AxiosProxyConfig } from 'axios';
-import { URL } from 'url';
 import { abSign } from './abSign.js';
+import {
+  DEFAULT_USER_AGENT,
+  DEFAULT_COOKIE,
+  DOUYIN_LIVE_BASE_URL,
+  ROOM_STATUS_LIVE,
+} from '../constants.js';
+import { extractRoomId } from '../utils/roomId.js';
 
 export interface DouyinApiOptions {
   cookies?: string;
@@ -48,32 +54,15 @@ export class DouyinApi {
   constructor(options: DouyinApiOptions = {}) {
     this.cookies = options.cookies || '';
     this.proxy = options.proxy || null;
-    this.userAgent =
-      options.userAgent ||
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+    this.userAgent = options.userAgent || DEFAULT_USER_AGENT;
   }
 
   /**
    * 从 URL 中提取房间 ID
+   * @deprecated Use extractRoomId from utils/roomId instead
    */
   extractRoomId(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      const pathname = urlObj.pathname;
-      const match = pathname.match(/\/live\.douyin\.com\/(\d+)/);
-      if (match) {
-        return match[1];
-      }
-      // 尝试从路径中提取
-      const parts = pathname.split('/').filter((p) => p);
-      const lastPart = parts[parts.length - 1];
-      if (/^\d+$/.test(lastPart)) {
-        return lastPart;
-      }
-      throw new Error(`无法从 URL 中提取房间 ID: ${url}`);
-    } catch (error: any) {
-      throw new Error(`无效的 URL: ${url} - ${error.message}`);
-    }
+    return extractRoomId(url);
   }
 
   /**
@@ -84,18 +73,12 @@ export class DouyinApi {
       'User-Agent': this.userAgent,
       Accept: 'application/json, text/plain, */*',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      Referer: 'https://live.douyin.com/',
-      Origin: 'https://live.douyin.com',
+      Referer: `${DOUYIN_LIVE_BASE_URL}/`,
+      Origin: DOUYIN_LIVE_BASE_URL,
     };
 
     // 设置默认 Cookie（如果没有提供）
-    if (this.cookies) {
-      headers['Cookie'] = this.cookies;
-    } else {
-      // 使用 Python 代码中的默认 Cookie
-      headers['Cookie'] =
-        'ttwid=1%7C2iDIYVmjzMcpZ20fcaFde0VghXAA3NaNXE_SLR68IyE%7C1761045455%7Cab35197d5cfb21df6cbb2fa7ef1c9262206b062c315b9d04da746d0b37dfbc7d';
-    }
+    headers['Cookie'] = this.cookies || DEFAULT_COOKIE;
 
     return headers;
   }
@@ -122,7 +105,7 @@ export class DouyinApi {
 
     // 构建 API URL
     const queryString = new URLSearchParams(params).toString();
-    let apiUrl = `https://live.douyin.com/webcast/room/web/enter/?${queryString}`;
+    let apiUrl = `${DOUYIN_LIVE_BASE_URL}/webcast/room/web/enter/?${queryString}`;
 
     // 添加 a_bogus 签名参数（不进行 URL 编码，与 Python 实现一致）
     const aBogus = abSign(queryString, this.userAgent);
@@ -159,7 +142,7 @@ export class DouyinApi {
 
       return {
         roomId,
-        status: roomData.status, // 2 = 直播中, 4 = 未开播
+        status: roomData.status, // ROOM_STATUS_LIVE = 直播中, ROOM_STATUS_OFFLINE = 未开播
         anchorName: userData?.nickname || '未知主播',
         title: roomData.title || '',
         streamUrl: roomData.stream_url,
@@ -187,7 +170,7 @@ export class DouyinApi {
    * @returns 流 URL 信息
    */
   async getStreamUrls(roomInfo: RoomInfo, quality: VideoQuality = 'origin'): Promise<StreamInfo> {
-    if (roomInfo.status !== 2) {
+    if (roomInfo.status !== ROOM_STATUS_LIVE) {
       return {
         isLive: false,
         message: '直播间未开播',
@@ -249,7 +232,7 @@ export class DouyinApi {
    * @returns 流 URL 信息
    */
   async getStreamUrl(url: string, quality: VideoQuality = 'origin'): Promise<StreamInfo> {
-    const roomId = /^\d+$/.test(url) ? url : this.extractRoomId(url);
+    const roomId = extractRoomId(url);
     const roomInfo = await this.getRoomInfo(roomId);
     return await this.getStreamUrls(roomInfo, quality);
   }

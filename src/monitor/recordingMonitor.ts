@@ -1,5 +1,10 @@
 import chalk from 'chalk';
 import { RecordingStatus } from '../recorders/flvRecorder.js';
+import {
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_RETRY_DELAY,
+  DEFAULT_MONITOR_CHECK_INTERVAL,
+} from '../constants.js';
 
 export interface RecordingMonitorOptions {
   maxRetries?: number;
@@ -34,8 +39,8 @@ export class RecordingMonitor {
   private monitorInterval: NodeJS.Timeout | null = null;
 
   constructor(options: RecordingMonitorOptions = {}) {
-    this.maxRetries = options.maxRetries || 3;
-    this.retryDelay = options.retryDelay || 5000; // 毫秒
+    this.maxRetries = options.maxRetries || DEFAULT_RECONNECT_MAX_RETRIES;
+    this.retryDelay = options.retryDelay || DEFAULT_RECONNECT_RETRY_DELAY;
     this.onReconnect = options.onReconnect;
     this.onError = options.onError;
   }
@@ -70,7 +75,7 @@ export class RecordingMonitor {
         // 录制意外停止，尝试重连
         void this.handleReconnect(recorder, startRecording, recordingParams);
       }
-    }, 5000); // 每 5 秒检查一次
+    }, DEFAULT_MONITOR_CHECK_INTERVAL);
   }
 
   /**

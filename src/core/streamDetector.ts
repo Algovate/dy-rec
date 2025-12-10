@@ -1,6 +1,8 @@
 import { DouyinApi, DouyinApiOptions, VideoQuality } from '../api/douyinApi.js';
 import { BrowserController } from './browser.js';
 import chalk from 'chalk';
+import { extractRoomId } from '../utils/roomId.js';
+import { StreamDetectionError } from '../utils/errors.js';
 
 export type DetectionMode = 'api' | 'browser' | 'hybrid';
 
@@ -92,7 +94,7 @@ export class StreamDetector {
 
       return {
         mode: 'api',
-        roomId: /^\d+$/.test(roomIdOrUrl) ? roomIdOrUrl : this.apiClient.extractRoomId(roomIdOrUrl),
+        roomId: extractRoomId(roomIdOrUrl),
         anchorName: streamInfo.anchorName || '未知',
         title: streamInfo.title || '',
         quality: streamInfo.quality || 'unknown',
@@ -101,8 +103,9 @@ export class StreamDetector {
         recordUrl: streamInfo.recordUrl || '',
         availableQualities: streamInfo.availableQualities,
       };
-    } catch (error: any) {
-      throw new Error(`API 检测失败: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new StreamDetectionError(`API 检测失败: ${message}`, error);
     }
   }
 
@@ -112,12 +115,7 @@ export class StreamDetector {
   private async detectByBrowser(roomIdOrUrl: string): Promise<DetectedStreamInfo> {
     try {
       // 提取房间 ID
-      let roomId: string;
-      if (/^\d+$/.test(roomIdOrUrl)) {
-        roomId = roomIdOrUrl;
-      } else {
-        roomId = this.apiClient.extractRoomId(roomIdOrUrl);
-      }
+      const roomId = extractRoomId(roomIdOrUrl);
 
       // 启动浏览器
       this.browserController = new BrowserController({
@@ -149,8 +147,9 @@ export class StreamDetector {
         recordUrl: selectedUrl,
         availableQualities: [],
       };
-    } catch (error: any) {
-      throw new Error(`浏览器检测失败: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new StreamDetectionError(`浏览器检测失败: ${message}`, error);
     } finally {
       if (this.browserController) {
         await this.browserController.close();

@@ -6,6 +6,7 @@ import { M3u8Recorder } from '../recorders/m3u8Recorder.js';
 import { SegmentRecorder } from '../recorders/segmentRecorder.js';
 import { RecordingMonitor, AutoReconnectRecorder } from '../monitor/recordingMonitor.js';
 import { AppConfig } from '../config/configManager.js';
+import { getErrorMessage } from '../utils/errors.js';
 
 type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 
@@ -218,8 +219,7 @@ export class TaskManager {
       try {
         await task.start();
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(chalk.red(`[Task Manager] 任务 ${roomId} 失败: ${message}`));
+        console.error(chalk.red(`[Task Manager] 任务 ${roomId} 失败: ${getErrorMessage(error)}`));
       } finally {
         // 任务完成后从任务列表中移除
         this.tasks.delete(roomId);

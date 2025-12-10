@@ -46,3 +46,7 @@ export function sanitizeFilename(filename: string): string {
 export function getTimestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 }
+
+// Re-export utilities from subdirectories
+export * from './utils/roomId.js';
+export * from './utils/errors.js';
