@@ -146,11 +146,8 @@ export class FlvRecorder {
 
       // 设置输出格式
       const ext = path.extname(outputFilename).toLowerCase();
-      if (audioOnly && ext === '.m4a') {
-        command = command.format('ipod');
-      } else if (audioOnly && ext === '.mp3') {
-        command = command.audioCodec('libmp3lame').audioBitrate('192k').format('mp3');
-      } else if (format === 'ts' || ext === '.ts') {
+
+      if (format === 'ts' || ext === '.ts') {
         // TS 格式：支持边录边播，中断安全
         command = command.format('mpegts');
         console.log('[FLV Recorder] Using TS format (streamable, interrupt-safe)');
@@ -160,6 +157,10 @@ export class FlvRecorder {
           .outputOptions(['-movflags', '+frag_keyframe+empty_moov+default_base_moof'])
           .format('mp4');
         console.log('[FLV Recorder] Using Fragmented MP4 format (streamable)');
+      } else if (audioOnly && ext === '.m4a') {
+        command = command.format('ipod');
+      } else if (audioOnly && ext === '.mp3') {
+        command = command.audioCodec('libmp3lame').audioBitrate('192k').format('mp3');
       } else {
         // 默认 MP4 格式
         command = command

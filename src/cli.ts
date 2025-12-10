@@ -207,10 +207,10 @@ async function recordSingleRoom(options: RecordOptions): Promise<void> {
   const anchorName = (streamInfo.anchorName || 'unknown').replace(/[^\w\s-]/g, '').trim();
   // 根据格式和音频选项确定文件扩展名
   let fileExt: string;
-  if (audioOnly) {
-    fileExt = 'm4a';
-  } else if (outputFormat === 'ts') {
+  if (outputFormat === 'ts') {
     fileExt = 'ts';
+  } else if (audioOnly) {
+    fileExt = 'm4a';
   } else {
     fileExt = 'mp4'; // mp4 和 fmp4 都使用 .mp4 扩展名
   }
@@ -326,7 +326,7 @@ async function recordWithConfig(options: ConfigOptions): Promise<void> {
   }, 10000);
 
   // 等待所有任务完成（实际上会一直运行直到中断）
-  await new Promise(() => {});
+  await new Promise(() => { });
 }
 
 /**
@@ -414,7 +414,7 @@ async function watchRooms(options: WatchOptions): Promise<void> {
   });
 
   // 等待（实际上会一直运行直到中断）
-  await new Promise(() => {});
+  await new Promise(() => { });
 }
 
 /**
