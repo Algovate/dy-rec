@@ -122,22 +122,46 @@ export class BrowserController {
       }
 
       // 检测其他可能的流 URL（包含 pull、stream 等关键词）
+      // 但排除 API 端点、配置文件和明显非流的 URL
+      const isNonStreamUrl =
+        url.includes('/api/') ||
+        url.includes('/webcast/') ||
+        url.includes('/aweme/') ||
+        url.includes('/solution/') ||
+        url.includes('config') ||
+        url.includes('setting') ||
+        url.includes('user/') ||
+        url.includes('gift/') ||
+        url.includes('ranklist/') ||
+        url.includes('lottery/') ||
+        url.includes('im/') ||
+        url.includes('privilege/') ||
+        url.includes('emoji') ||
+        url.includes('short_touch') ||
+        url.includes('interaction/') ||
+        url.includes('luckybox/') ||
+        url.includes('banner') ||
+        url.includes('ab/params') ||
+        url.includes('get/user/settings');
+
       if (
-        (url.includes('pull') || url.includes('stream') || url.includes('live')) &&
+        (url.includes('pull') || url.includes('stream')) &&
         !url.includes('.flv') &&
         !url.includes('.m3u8') &&
         !url.includes('.mpd') &&
+        !isNonStreamUrl &&
         !this.streamUrls.includes(url)
       ) {
-        // 检查是否是视频相关的 URL
+        // 只记录 media 类型的请求作为流 URL
         const resourceType = request.resourceType();
-        if (resourceType === 'media' || resourceType === 'xhr' || resourceType === 'fetch') {
+        if (resourceType === 'media') {
           this.streamUrls.push(url);
           console.log(`[Stream Detected] Other stream: ${url} (type: ${resourceType})`);
           if (this.onStreamDetected) {
             this.onStreamDetected('other', url);
           }
         }
+        // 不再记录 xhr/fetch 类型的非流 URL 到控制台
       }
 
       // 继续请求
@@ -553,14 +577,18 @@ export class BrowserController {
           }
 
           if (url) {
-            // 检查是否是流相关的 URL
-            if (
-              url.includes('.flv') ||
-              url.includes('.m3u8') ||
-              url.includes('.mpd') ||
-              url.includes('pull') ||
-              url.includes('stream')
-            ) {
+            // 检查是否是流相关的 URL（排除 API 端点）
+            const isStreamUrl =
+              (url.includes('.flv') ||
+                url.includes('.m3u8') ||
+                url.includes('.mpd') ||
+                (url.includes('pull') && url.includes('.flv')) ||
+                (url.includes('stream') && (url.includes('.flv') || url.includes('.m3u8')))) &&
+              !url.includes('/api/') &&
+              !url.includes('/webcast/') &&
+              !url.includes('/aweme/');
+
+            if (isStreamUrl) {
               (window as any).__detectedStreamUrl = url;
               console.log('[Stream Detected] From Fetch:', url);
             }
@@ -579,14 +607,18 @@ export class BrowserController {
         ) {
           const urlStr = typeof url === 'string' ? url : url.toString();
           if (urlStr) {
-            // 检查是否是流相关的 URL
-            if (
-              urlStr.includes('.flv') ||
-              urlStr.includes('.m3u8') ||
-              urlStr.includes('.mpd') ||
-              urlStr.includes('pull') ||
-              urlStr.includes('stream')
-            ) {
+            // 检查是否是流相关的 URL（排除 API 端点）
+            const isStreamUrl =
+              (urlStr.includes('.flv') ||
+                urlStr.includes('.m3u8') ||
+                urlStr.includes('.mpd') ||
+                (urlStr.includes('pull') && urlStr.includes('.flv')) ||
+                (urlStr.includes('stream') && (urlStr.includes('.flv') || urlStr.includes('.m3u8')))) &&
+              !urlStr.includes('/api/') &&
+              !urlStr.includes('/webcast/') &&
+              !urlStr.includes('/aweme/');
+
+            if (isStreamUrl) {
               (window as any).__detectedStreamUrl = urlStr;
               console.log('[Stream Detected] From XHR:', urlStr);
             }
@@ -621,6 +653,123 @@ export class BrowserController {
       }
     } catch {
       // 忽略错误
+    }
+  }
+
+  /**
+   * 从页面提取元数据（主播名、标题等）
+   */
+  async extractPageMetadata(): Promise<{ anchorName: string; title: string }> {
+    if (!this.page) {
+      return { anchorName: '', title: '' };
+    }
+
+    try {
+      const metadata = await this.page.evaluate(() => {
+        const result: { anchorName: string; title: string } = {
+          anchorName: '',
+          title: '',
+        };
+
+        // 尝试多种选择器提取主播名
+        const anchorSelectors = [
+          '[data-e2e="live-room-anchor-name"]',
+          '.live-room-anchor-name',
+          '.anchor-name',
+          '.nickname',
+          'h1',
+          'h2',
+          '.room-title',
+          '[class*="anchor"]',
+          '[class*="nickname"]',
+        ];
+
+        for (const selector of anchorSelectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            const text = element.textContent?.trim();
+            if (text && text.length > 0 && text.length < 50) {
+              result.anchorName = text;
+              break;
+            }
+          }
+        }
+
+        // 如果没有找到，尝试从页面标题提取
+        if (!result.anchorName) {
+          const pageTitle = document.title;
+          if (pageTitle) {
+            // 抖音直播间标题格式通常是 "主播名 - 抖音直播"
+            const match = pageTitle.match(/^(.+?)\s*[-|–|—]\s*抖音/);
+            if (match && match[1]) {
+              result.anchorName = match[1].trim();
+            } else {
+              result.anchorName = pageTitle.split(' - ')[0] || pageTitle.split(' | ')[0] || '';
+            }
+          }
+        }
+
+        // 提取直播标题
+        const titleSelectors = [
+          '[data-e2e="live-room-title"]',
+          '.live-room-title',
+          '.room-title',
+          '[class*="title"]',
+          '.subtitle',
+        ];
+
+        for (const selector of titleSelectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            const text = element.textContent?.trim();
+            if (text && text.length > 0 && text.length < 200) {
+              result.title = text;
+              break;
+            }
+          }
+        }
+
+        // 尝试从 meta 标签获取
+        if (!result.title) {
+          const metaTitle = document.querySelector('meta[property="og:title"]');
+          if (metaTitle) {
+            const content = metaTitle.getAttribute('content');
+            if (content) {
+              result.title = content;
+            }
+          }
+        }
+
+        // 尝试从页面数据中提取（如果页面有全局数据对象）
+        try {
+          const pageData = (window as any).__INITIAL_STATE__ || (window as any).__NUXT__;
+          if (pageData) {
+            if (!result.anchorName) {
+              const anchor =
+                pageData?.data?.user?.nickname ||
+                pageData?.anchor?.nickname ||
+                pageData?.userInfo?.nickname;
+              if (anchor) result.anchorName = anchor;
+            }
+            if (!result.title) {
+              const title =
+                pageData?.data?.room?.title ||
+                pageData?.room?.title ||
+                pageData?.roomInfo?.title;
+              if (title) result.title = title;
+            }
+          }
+        } catch {
+          // 忽略错误
+        }
+
+        return result;
+      });
+
+      return metadata;
+    } catch (error: any) {
+      console.log(`[Browser] Failed to extract page metadata: ${error.message}`);
+      return { anchorName: '', title: '' };
     }
   }
 

@@ -11,6 +11,7 @@ import {
 } from './cli/handlers/configHandler.js';
 import { downloadVideo, DownloadOptions } from './cli/handlers/downloadHandler.js';
 import { getErrorMessage } from './utils/errors.js';
+import { Logger } from './utils/logger.js';
 import {
   DEFAULT_RECORDINGS_DIR,
   DEFAULT_OUTPUT_DIR,
@@ -25,7 +26,14 @@ const program = new Command();
 program
   .name('dy-rec')
   .description('Record/download Douyin live streams with advanced features')
-  .version('2.0.0');
+  .version('2.0.0')
+  .option('-v, --verbose', 'Show detailed debug information');
+
+// Helper to init logger
+const initLogger = () => {
+  const options = program.opts();
+  Logger.setVerbose(!!options.verbose);
+};
 
 // Record Command (Default)
 program
@@ -46,9 +54,10 @@ program
   .option('--cookies <cookies>', 'Douyin cookies for API mode')
   .action(async (roomId: string, options: Omit<RecordOptions, 'room'>) => {
     try {
+      initLogger();
       await recordSingleRoom({ ...options, room: roomId });
     } catch (error: unknown) {
-      console.error(chalk.red('\n[Error]'), getErrorMessage(error));
+      Logger.error(`\n[Error] ${getErrorMessage(error)}`);
       process.exit(1);
     }
   });
@@ -63,13 +72,12 @@ program
   .option('-i, --interval <seconds>', 'Check interval in seconds', parseInt)
   .action(async (options: WatchOptions & { config?: string }) => {
     try {
+      initLogger();
       // Compatibility: map config to file if needed or ensure handler uses correct property
-      // The handler expects 'file' property in WatchOptions based on previous code
-      // We will map 'config' option to 'file' property for the handler
       const handlerOptions = { ...options, file: options.config || DEFAULT_CONFIG_PATH };
       await watchRooms(handlerOptions);
     } catch (error: unknown) {
-      console.error(chalk.red('\n[Error]'), getErrorMessage(error));
+      Logger.error(`\n[Error] ${getErrorMessage(error)}`);
       process.exit(1);
     }
   });
@@ -82,10 +90,11 @@ program
   .option('-c, --config <path>', 'Configuration file path', DEFAULT_CONFIG_PATH)
   .action(async (options: ConfigOptions & { config?: string }) => {
     try {
+      initLogger();
       const handlerOptions = { ...options, file: options.config || DEFAULT_CONFIG_PATH };
       await recordWithConfig(handlerOptions);
     } catch (error: unknown) {
-      console.error(chalk.red('\n[Error]'), getErrorMessage(error));
+      Logger.error(`\n[Error] ${getErrorMessage(error)}`);
       process.exit(1);
     }
   });
@@ -103,9 +112,10 @@ program
   .option('--headful', 'Show browser window (for debugging)')
   .action(async (url: string, options: Omit<DownloadOptions, 'url'>) => {
     try {
+      initLogger();
       await downloadVideo({ ...options, url });
     } catch (error: unknown) {
-      console.error(chalk.red('\n[Error]'), getErrorMessage(error));
+      Logger.error(`\n[Error] ${getErrorMessage(error)}`);
       process.exit(1);
     }
   });

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ensureDir } from '../utils.js';
 import { DEFAULT_BROWSER_USER_AGENT, DEFAULT_DOWNLOAD_TIMEOUT } from '../constants.js';
+import { Logger } from '../utils/logger.js';
 
 // 匹配抖音视频 CDN 地址
 const MEDIA_HOST_PATTERN = /^https?:\/\/v\d+-web\.douyinvod\.com\/[^\s'"]+/;
@@ -52,22 +53,22 @@ export class VideoDownloader {
       const outputDir = path.dirname(outputPath);
       await ensureDir(outputDir);
 
-      console.log('[VideoDownloader] 正在捕获视频 URL...');
+      Logger.verbose('[VideoDownloader] 正在捕获视频 URL...');
 
       // 捕获视频 URL
       const { videoUrl, videoId: id, finalUrl } = await this.captureVideoUrl(url);
       videoId = id;
 
-      console.log(`[VideoDownloader] 视频 ID: ${videoId}`);
-      console.log(`[VideoDownloader] 页面 URL: ${finalUrl}`);
-      console.log(`[VideoDownloader] 视频 URL: ${videoUrl.substring(0, 100)}...`);
+      Logger.verbose(`[VideoDownloader] 视频 ID: ${videoId}`);
+      Logger.verbose(`[VideoDownloader] 页面 URL: ${finalUrl}`);
+      Logger.verbose(`[VideoDownloader] 视频 URL: ${videoUrl.substring(0, 100)}...`);
 
       // 下载视频文件
-      console.log('[VideoDownloader] 正在下载视频...');
+      Logger.verbose('[VideoDownloader] 正在下载视频...');
       const fileSize = await this.downloadFile(videoUrl, outputPath);
 
-      console.log(`[VideoDownloader] 下载完成: ${outputPath}`);
-      console.log(`[VideoDownloader] 文件大小: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
+      Logger.verbose(`[VideoDownloader] 下载完成: ${outputPath}`);
+      Logger.verbose(`[VideoDownloader] 文件大小: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
 
       return {
         success: true,
@@ -76,7 +77,7 @@ export class VideoDownloader {
         fileSize,
       };
     } catch (error: any) {
-      console.error(`[VideoDownloader] 下载失败: ${error.message}`);
+      Logger.error(`[VideoDownloader] 下载失败: ${error.message}`);
       return {
         success: false,
         videoId,
@@ -220,13 +221,13 @@ export class VideoDownloader {
         resolve(downloadedBytes);
       });
 
-      writer.on('error', (err) => {
-        fs.unlink(outputPath, () => {}); // 删除不完整的文件
+      writer.on('error', (err: any) => {
+        fs.unlink(outputPath, () => { }); // 删除不完整的文件
         reject(new Error(`文件写入失败: ${err.message}`));
       });
 
       response.data.on('error', (err: Error) => {
-        fs.unlink(outputPath, () => {});
+        fs.unlink(outputPath, () => { });
         reject(new Error(`下载流错误: ${err.message}`));
       });
     });

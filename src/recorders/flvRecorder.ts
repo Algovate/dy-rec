@@ -1,5 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
+import { Logger } from '../utils/logger.js';
 import {
   BaseRecorder,
   BaseRecorderOptions,
@@ -48,8 +49,8 @@ export class FlvRecorder extends BaseRecorder {
       this.isRecording = true;
       this.startTime = Date.now();
 
-      console.log(`[FLV Recorder] Starting recording from: ${streamUrl}`);
-      console.log(`[FLV Recorder] Output file: ${outputPath}`);
+      Logger.verbose(`[FLV Recorder] Starting recording from: ${streamUrl}`);
+      Logger.verbose(`[FLV Recorder] Output file: ${outputPath}`);
 
       let command = ffmpeg(streamUrl).inputOptions(getStreamInputOptions(options.cookies));
 
@@ -57,7 +58,7 @@ export class FlvRecorder extends BaseRecorder {
         command,
         {
           onStart: (commandLine: string) => {
-            console.log('[FLV Recorder] FFmpeg command:', commandLine);
+            Logger.verbose('[FLV Recorder] FFmpeg command:', commandLine);
           },
           onProgress: (progress: ProgressInfo) => {
             this.duration = progress.duration;
@@ -67,14 +68,14 @@ export class FlvRecorder extends BaseRecorder {
           },
           onEnd: () => {
             this.isRecording = false;
-            console.log('[FLV Recorder] Recording completed');
+            Logger.verbose('[FLV Recorder] Recording completed');
             resolve(outputPath);
           },
           onError: (err: Error, stderr: string) => {
             this.isRecording = false;
-            console.error('[FLV Recorder] Error:', err.message);
+            Logger.error('[FLV Recorder] Error:', err.message);
             if (stderr) {
-              console.error('[FLV Recorder] FFmpeg stderr:', stderr);
+              Logger.verbose('[FLV Recorder] FFmpeg stderr:', stderr);
             }
             reject(err);
           },
@@ -85,9 +86,9 @@ export class FlvRecorder extends BaseRecorder {
       command = configureCodecs(command, options, false);
 
       if (format === 'ts' || path.extname(outputFilename).toLowerCase() === '.ts') {
-        console.log('[FLV Recorder] Using TS format (streamable, interrupt-safe)');
+        Logger.verbose('[FLV Recorder] Using TS format (streamable, interrupt-safe)');
       } else if (format === 'fmp4') {
-        console.log('[FLV Recorder] Using Fragmented MP4 format (streamable)');
+        Logger.verbose('[FLV Recorder] Using Fragmented MP4 format (streamable)');
       }
 
       command = configureOutputFormat(command, outputFilename, format, options);

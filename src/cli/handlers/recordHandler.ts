@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { Logger } from '../../utils/logger.js';
 import { StreamDetector, DetectionMode } from '../../core/streamDetector.js';
 import { FlvRecorder } from '../../recorders/flvRecorder.js';
 import { M3u8Recorder } from '../../recorders/m3u8Recorder.js';
@@ -57,12 +58,12 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     throw new Error(`Invalid format: ${format}. Valid formats: ${VALID_OUTPUT_FORMATS.join(', ')}`);
   }
 
-  console.log(chalk.blue('\n=== Douyin Live Recorder ===\n'));
-  console.log(chalk.cyan(`Room: ${room}`));
-  console.log(chalk.cyan(`Mode: ${mode}`));
-  console.log(chalk.cyan(`Quality: ${quality}`));
-  console.log(chalk.cyan(`Format: ${format}`));
-  console.log(chalk.cyan(`Output: ${output}\n`));
+  Logger.log(chalk.blue('\n=== Douyin Live Recorder ===\n'));
+  Logger.info(`Room: ${room}`);
+  Logger.verbose(`Mode: ${mode}`);
+  Logger.verbose(`Quality: ${quality}`);
+  Logger.verbose(`Format: ${format}`);
+  Logger.verbose(`Output: ${output}\n`);
 
   // Detect stream
   const detector = new StreamDetector({
@@ -71,13 +72,13 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     cookies,
   });
 
-  console.log(chalk.yellow('[1/3] Detecting stream...'));
+  Logger.info(chalk.yellow('[1/3] Detecting stream...'));
   const streamInfo = await detector.detectStream(room);
   await detector.cleanup();
 
-  console.log(chalk.green(`[Stream] Found: ${streamInfo.recordUrl}`));
-  console.log(chalk.green(`[Stream] Anchor: ${streamInfo.anchorName || 'Unknown'}`));
-  console.log(chalk.green(`[Stream] Title: ${streamInfo.title || 'Unknown'}\n`));
+  Logger.success(`[Stream] Found: ${streamInfo.recordUrl}`);
+  Logger.info(`[Stream] Anchor: ${streamInfo.anchorName || 'Unknown'}`);
+  Logger.info(`[Stream] Title: ${streamInfo.title || 'Unknown'}\n`);
 
   // Select recorder
   let recorder: FlvRecorder | M3u8Recorder | SegmentRecorder;
@@ -112,13 +113,13 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   }
   const filename = `douyin_${streamInfo.roomId}_${anchorName}_${timestamp}.${fileExt}`;
 
-  console.log(chalk.yellow('[2/3] Starting recording...'));
-  console.log(chalk.cyan(`Output: ${filename}\n`));
-  console.log(chalk.gray('Press Ctrl+C to stop recording\n'));
+  Logger.info(chalk.yellow('[2/3] Starting recording...'));
+  Logger.info(`Output: ${filename}\n`);
+  Logger.gray('Press Ctrl+C to stop recording\n');
 
   // Handle interrupt
   const handleInterrupt = async () => {
-    console.log(chalk.yellow('\n\n[Interrupt] Stopping recording...'));
+    Logger.warn('\n\n[Interrupt] Stopping recording...');
     await recorder.stop();
     process.exit(0);
   };
@@ -147,6 +148,6 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     });
   }
 
-  console.log(chalk.green(`\n\n✓ Recording completed!`));
-  console.log(chalk.green(`  Output: ${filename}\n`));
+  Logger.success(`\n\n✓ Recording completed!`);
+  Logger.info(`  Output: ${filename}\n`);
 }

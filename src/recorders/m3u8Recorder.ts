@@ -1,5 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
+import { Logger } from '../utils/logger.js';
 import {
   BaseRecorder,
   BaseRecorderOptions,
@@ -47,8 +48,8 @@ export class M3u8Recorder extends BaseRecorder {
       this.isRecording = true;
       this.startTime = Date.now();
 
-      console.log(`[M3U8 Recorder] Starting recording from: ${streamUrl}`);
-      console.log(`[M3U8 Recorder] Output file: ${outputPath}`);
+      Logger.verbose(`[M3U8 Recorder] Starting recording from: ${streamUrl}`);
+      Logger.verbose(`[M3U8 Recorder] Output file: ${outputPath}`);
 
       let command = ffmpeg(streamUrl).inputOptions(getHlsInputOptions(options.cookies));
 
@@ -56,7 +57,7 @@ export class M3u8Recorder extends BaseRecorder {
         command,
         {
           onStart: (commandLine: string) => {
-            console.log('[M3U8 Recorder] FFmpeg command:', commandLine);
+            Logger.verbose('[M3U8 Recorder] FFmpeg command:', commandLine);
           },
           onProgress: (progress: ProgressInfo) => {
             this.duration = progress.duration;
@@ -66,14 +67,14 @@ export class M3u8Recorder extends BaseRecorder {
           },
           onEnd: () => {
             this.isRecording = false;
-            console.log('[M3U8 Recorder] Recording completed');
+            Logger.verbose('[M3U8 Recorder] Recording completed');
             resolve(outputPath);
           },
           onError: (err: Error, stderr: string) => {
             this.isRecording = false;
-            console.error('[M3U8 Recorder] Error:', err.message);
+            Logger.error('[M3U8 Recorder] Error:', err.message);
             if (stderr) {
-              console.error('[M3U8 Recorder] FFmpeg stderr:', stderr);
+              Logger.verbose('[M3U8 Recorder] FFmpeg stderr:', stderr);
             }
             reject(err);
           },
@@ -84,9 +85,9 @@ export class M3u8Recorder extends BaseRecorder {
       command = configureCodecs(command, options, true);
 
       if (format === 'ts' || path.extname(outputFilename).toLowerCase() === '.ts') {
-        console.log('[M3U8 Recorder] Using TS format (streamable, interrupt-safe)');
+        Logger.verbose('[M3U8 Recorder] Using TS format (streamable, interrupt-safe)');
       } else if (format === 'fmp4') {
-        console.log('[M3U8 Recorder] Using Fragmented MP4 format (streamable)');
+        Logger.verbose('[M3U8 Recorder] Using Fragmented MP4 format (streamable)');
       }
 
       command = configureOutputFormat(command, outputFilename, format, options);

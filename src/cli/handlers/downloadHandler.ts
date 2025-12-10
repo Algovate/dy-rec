@@ -3,6 +3,7 @@ import path from 'node:path';
 import { VideoDownloader } from '../../download/videoDownloader.js';
 import { getTimestamp } from '../../utils.js';
 import { DEFAULT_RECORDINGS_DIR, DEFAULT_DOWNLOAD_TIMEOUT } from '../../constants.js';
+import { Logger } from '../../utils/logger.js';
 
 export interface DownloadOptions {
   url: string;
@@ -18,9 +19,9 @@ export interface DownloadOptions {
 export async function downloadVideo(options: DownloadOptions): Promise<void> {
   const { url, output, outdir = DEFAULT_RECORDINGS_DIR, timeout, headless } = options;
 
-  console.log(chalk.blue('\n=== Douyin Video Downloader ===\n'));
-  console.log(chalk.cyan(`URL: ${url}`));
-  console.log(chalk.cyan(`Output directory: ${outdir}\n`));
+  Logger.log(chalk.blue('\n=== Douyin Video Downloader ===\n'));
+  Logger.verbose(`URL: ${url}`);
+  Logger.verbose(`Output directory: ${outdir}\n`);
 
   const downloader = new VideoDownloader({
     headless: headless !== false, // Default headless mode, show browser when --headful
@@ -47,15 +48,15 @@ export async function downloadVideo(options: DownloadOptions): Promise<void> {
       try {
         const fs = await import('node:fs/promises');
         await fs.rename(outputPath, newPath);
-        console.log(chalk.green(`\n✓ 下载完成: ${newPath}`));
+        Logger.success(`\n✓ 下载完成: ${newPath}`);
       } catch {
-        console.log(chalk.green(`\n✓ 下载完成: ${outputPath}`));
+        Logger.success(`\n✓ 下载完成: ${outputPath}`);
       }
     } else {
-      console.log(chalk.green(`\n✓ 下载完成: ${outputPath}`));
+      Logger.success(`\n✓ 下载完成: ${outputPath}`);
     }
   } else {
-    console.error(chalk.red(`\n✗ 下载失败: ${result.error}`));
+    Logger.error(`\n✗ 下载失败: ${result.error}`);
     process.exit(1);
   }
 }
