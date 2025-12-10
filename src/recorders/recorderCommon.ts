@@ -93,7 +93,7 @@ export function configureCodecs(
         .audioFrequency(44100)
         .audioChannels(2);
     } else {
-      return command.noVideo().audioCodec('copy');
+      return command.noVideo().audioCodec('copy').outputOptions(['-bsf:a', 'aac_adtstoasc']);
     }
   } else if (options.videoOnly) {
     return command.noAudio().videoCodec('copy');
