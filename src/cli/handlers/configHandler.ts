@@ -49,9 +49,7 @@ export async function recordWithConfig(options: ConfigOptions): Promise<void> {
 
   // Add recording tasks for all rooms
   for (const room of rooms) {
-    const roomId = extractRoomId(room.url);
-
-    await taskManager.addTask(roomId, config, {
+    await taskManager.addTask(room.url, config, {
       duration: null,
       audioOnly: false,
     });
@@ -202,9 +200,9 @@ export async function watchRooms(options: WatchOptions): Promise<void> {
       console.log(chalk.green(`  Title: ${roomInfo.title}`));
 
       // Start recording
-      const room = rooms.find((r) => r.url.includes(roomId));
+      const room = rooms.find((r) => extractRoomId(r.url) === roomId);
       if (room && !taskManager.hasTask(roomId)) {
-        await taskManager.addTask(roomId, config, {
+        await taskManager.addTask(room.url, config, {
           duration: null,
           audioOnly: false,
         });

@@ -20,7 +20,7 @@ import {
 } from '../../constants.js';
 
 export interface RecordOptions {
-  room?: string;
+  roomIdOrUrl?: string; // Room ID (numeric) or URL (e.g., https://live.douyin.com/379595210124)
   output?: string;
   mode?: string;
   quality?: string;
@@ -38,7 +38,7 @@ export interface RecordOptions {
  */
 export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   const {
-    room,
+    roomIdOrUrl,
     output = DEFAULT_RECORDINGS_DIR,
 
     mode = DEFAULT_DETECTION_MODE,
@@ -52,7 +52,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     cookies,
   } = options;
 
-  if (!room) {
+  if (!roomIdOrUrl) {
     throw new Error('Room ID or URL is required');
   }
 
@@ -62,13 +62,13 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   }
 
   Logger.log(chalk.blue('\n=== Douyin Live Recorder ===\n'));
-  Logger.info(`Room: ${room}`);
+  Logger.info(`Room: ${roomIdOrUrl}`);
   Logger.verbose(`Mode: ${mode}`);
   Logger.verbose(`Quality: ${quality}`);
   Logger.verbose(`Format: ${format}`);
   Logger.verbose(`Output: ${output}\n`);
 
-  // Detect stream
+  // Detect stream (roomIdOrUrl can be numeric ID or URL)
   const detector = new StreamDetector({
     mode: mode as DetectionMode,
     quality: quality as VideoQuality,
@@ -76,7 +76,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   });
 
   Logger.info(chalk.yellow('[1/3] Detecting stream...'));
-  const streamInfo = await detector.detectStream(room);
+  const streamInfo = await detector.detectStream(roomIdOrUrl);
   await detector.cleanup();
 
   Logger.success(`[Stream] Found: ${streamInfo.recordUrl}`);

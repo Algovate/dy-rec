@@ -8,6 +8,7 @@ import { RecordingMonitor, AutoReconnectRecorder } from '../monitor/recordingMon
 import { AppConfig } from '../config/configManager.js';
 import { getErrorMessage } from '../utils/errors.js';
 import { DEFAULT_RECORDINGS_DIR } from '../constants.js';
+import { extractRoomId } from '../utils/roomId.js';
 
 type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 
@@ -31,6 +32,7 @@ interface TaskStatusInfo {
  * 录制任务
  */
 class RecordingTask {
+  private roomIdOrUrl: string;
   private roomId: string;
   private config: AppConfig;
   private options: TaskOptions;
@@ -42,8 +44,9 @@ class RecordingTask {
   private startTime: number | null = null;
   private error: Error | null = null;
 
-  constructor(roomId: string, config: AppConfig, options: TaskOptions = {}) {
-    this.roomId = roomId;
+  constructor(roomIdOrUrl: string, config: AppConfig, options: TaskOptions = {}) {
+    this.roomIdOrUrl = roomIdOrUrl;
+    this.roomId = extractRoomId(roomIdOrUrl);
     this.config = config;
     this.options = options;
   }
@@ -61,7 +64,7 @@ class RecordingTask {
         proxy: this.config.api?.proxy,
       });
 
-      this.streamInfo = await detector.detectStream(this.roomId);
+      this.streamInfo = await detector.detectStream(this.roomIdOrUrl);
       await detector.cleanup();
 
       // 选择录制器（需要 streamInfo）
@@ -198,21 +201,22 @@ export class TaskManager {
 
   /**
    * 添加录制任务
-   * @param roomId - 房间 ID
+   * @param roomIdOrUrl - 房间 ID 或 URL
    * @param config - 配置
    * @param options - 选项
    * @returns Promise<void>
    */
   async addTask(
-    roomId: string,
+    roomIdOrUrl: string,
     config: AppConfig,
     options: TaskOptions = {}
   ): Promise<RecordingTask> {
+    const roomId = extractRoomId(roomIdOrUrl);
     if (this.tasks.has(roomId)) {
       throw new Error(`房间 ${roomId} 已经在录制中`);
     }
 
-    const task = new RecordingTask(roomId, config, options);
+    const task = new RecordingTask(roomIdOrUrl, config, options);
     this.tasks.set(roomId, task);
 
     console.log(chalk.blue(`[Task Manager] 添加录制任务: ${roomId}`));

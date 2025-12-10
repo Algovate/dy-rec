@@ -52,10 +52,12 @@ program
   .option('--segment', 'Enable segment recording')
   .option('--segment-duration <seconds>', 'Segment duration in seconds', parseInt)
   .option('--cookies <cookies>', 'Douyin cookies for API mode')
-  .action(async (roomId: string, options: Omit<RecordOptions, 'room'>) => {
+  .action(async (roomId: string, options: Omit<RecordOptions, 'roomIdOrUrl'>) => {
     try {
       initLogger();
-      await recordSingleRoom({ ...options, room: roomId });
+      // roomId parameter can be either numeric ID or URL
+      const roomIdOrUrl = roomId;
+      await recordSingleRoom({ ...options, roomIdOrUrl });
     } catch (error: unknown) {
       Logger.error(`\n[Error] ${getErrorMessage(error)}`);
       process.exit(1);
