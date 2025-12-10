@@ -22,8 +22,8 @@
 ## 安装
 
 ```bash
-git clone <repository-url>
-cd douyin-recorder
+git clone git@github.com:Algovate/dy-rec.git
+cd dy-rec
 npm install
 npm run build
 ```
@@ -39,6 +39,64 @@ npm run dev record -r 379595210124
 ```
 
 **注意**: 使用 `npm start` 时需要用 `--` 分隔参数：`npm start -- record -r 379595210124`
+
+## 主要功能
+
+### 直播录制
+
+```bash
+# 基本录制
+node dist/cli.js record -r 379595210124
+
+# 指定输出目录
+node dist/cli.js record -r 379595210124 -o ./videos
+
+# 指定画质
+node dist/cli.js record -r 379595210124 -q hd
+
+# 仅录制音频
+node dist/cli.js record -r 379595210124 --audio-only
+
+# 使用 TS 格式（边录边播，中断安全）
+node dist/cli.js record -r 379595210124 --format ts
+```
+
+### 分段录制
+
+```bash
+# 每 30 分钟自动分段（适合长时间录制）
+node dist/cli.js record -r 379595210124 --segment --segment-duration 1800
+```
+
+### 短视频下载
+
+```bash
+# 下载短视频（支持短链）
+node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/'
+
+# 指定输出文件名
+node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/' -o my_video.mp4
+```
+
+### 配置文件模式
+
+```bash
+# 使用配置文件批量录制
+node dist/cli.js config
+
+# 指定配置文件
+node dist/cli.js config -f /path/to/config.json
+```
+
+### 监听模式
+
+```bash
+# 自动监控配置中的房间，开播时自动录制
+node dist/cli.js watch
+
+# 指定检查间隔（秒）
+node dist/cli.js watch -i 30
+```
 
 ## 文档
 
