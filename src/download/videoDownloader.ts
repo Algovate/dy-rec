@@ -15,11 +15,30 @@ export interface VideoDownloaderOptions {
   userAgent?: string;
 }
 
+export interface VideoMetadata {
+  anchorName: string;
+  title: string;
+  description?: string;
+  publishTime?: string;
+  publishTimestamp?: number;
+  publishTimeISO?: string;
+  stats?: {
+    likes?: string;
+    comments?: string;
+    shares?: string;
+    views?: string;
+  };
+}
+
 export interface DownloadResult {
   success: boolean;
   videoId: string;
   outputPath: string;
   fileSize?: number;
+  sourceUrl: string;
+  finalUrl: string;
+  videoUrl: string;
+  metadata?: VideoMetadata;
   error?: string;
 }
 
@@ -47,6 +66,10 @@ export class VideoDownloader {
    */
   async download(url: string, outputPath: string): Promise<DownloadResult> {
     let videoId = 'unknown';
+    let sourceUrl = url;
+    let finalUrl = '';
+    let videoUrl = '';
+    let metadata: VideoMetadata | undefined;
 
     try {
       // 确保输出目录存在
@@ -55,12 +78,19 @@ export class VideoDownloader {
 
       Logger.verbose('[VideoDownloader] 正在捕获视频 URL...');
 
-      // 捕获视频 URL
-      const { videoUrl, videoId: id, finalUrl } = await this.captureVideoUrl(url);
-      videoId = id;
+      // 捕获视频 URL 和元数据
+      const captureResult = await this.captureVideoUrl(url);
+      videoId = captureResult.videoId;
+      finalUrl = captureResult.finalUrl;
+      videoUrl = captureResult.videoUrl;
+      metadata = captureResult.metadata;
 
       Logger.verbose(`[VideoDownloader] 视频 ID: ${videoId}`);
       Logger.verbose(`[VideoDownloader] 页面 URL: ${finalUrl}`);
+      if (metadata) {
+        Logger.verbose(`[VideoDownloader] 作者: ${metadata.anchorName}`);
+        Logger.verbose(`[VideoDownloader] 标题: ${metadata.title}`);
+      }
       Logger.verbose(`[VideoDownloader] 视频 URL: ${videoUrl.substring(0, 100)}...`);
 
       // 下载视频文件
@@ -75,6 +105,10 @@ export class VideoDownloader {
         videoId,
         outputPath,
         fileSize,
+        sourceUrl,
+        finalUrl,
+        videoUrl,
+        metadata,
       };
     } catch (error: any) {
       Logger.error(`[VideoDownloader] 下载失败: ${error.message}`);
@@ -82,6 +116,10 @@ export class VideoDownloader {
         success: false,
         videoId,
         outputPath,
+        sourceUrl,
+        finalUrl: finalUrl || url,
+        videoUrl,
+        metadata,
         error: error.message,
       };
     } finally {
@@ -90,11 +128,11 @@ export class VideoDownloader {
   }
 
   /**
-   * 使用浏览器捕获视频真实 URL
+   * 使用浏览器捕获视频真实 URL 和元数据
    */
   private async captureVideoUrl(
     pageUrl: string
-  ): Promise<{ videoUrl: string; videoId: string; finalUrl: string }> {
+  ): Promise<{ videoUrl: string; videoId: string; finalUrl: string; metadata?: VideoMetadata }> {
     await this.launchBrowser();
 
     if (!this.page) {
@@ -131,6 +169,9 @@ export class VideoDownloader {
       // 超时不影响，继续处理
     }
 
+    // 等待页面完全加载以提取元数据
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     // 获取最终 URL（短链会重定向）
     const finalUrl = this.page.url();
 
@@ -149,7 +190,148 @@ export class VideoDownloader {
     // 从 URL 中提取视频 ID
     const videoId = this.extractVideoId(capturedUrl, finalUrl);
 
-    return { videoUrl: capturedUrl, videoId, finalUrl };
+    // 提取页面元数据
+    const metadata = await this.extractVideoMetadata();
+
+    return { videoUrl: capturedUrl, videoId, finalUrl, metadata };
+  }
+
+  /**
+   * 从页面提取视频元数据
+   */
+  private async extractVideoMetadata(): Promise<VideoMetadata | undefined> {
+    if (!this.page) {
+      return undefined;
+    }
+
+    try {
+      const metadata = await this.page.evaluate(() => {
+        const result: {
+          anchorName: string;
+          title: string;
+          description?: string;
+          publishTime?: string;
+          publishTimestamp?: number;
+          publishTimeISO?: string;
+          stats?: {
+            likes?: string;
+            comments?: string;
+            shares?: string;
+            views?: string;
+          };
+        } = {
+          anchorName: '',
+          title: '',
+        };
+
+        // 提取视频标题 - 优先从h1获取，清理格式
+        const h1 = document.querySelector('h1');
+        if (h1) {
+          result.title = h1.textContent?.trim() || '';
+          // 清理标题：移除"第X集 |"前缀，只保留标题主体
+          result.title = result.title.replace(/^第\d+集\s*\|\s*/, '');
+          // 移除末尾的描述性文字
+          if (result.title.includes('金融投资本质上')) {
+            result.title = result.title.split('金融投资本质上')[0].trim();
+          }
+          // 限制长度
+          if (result.title.length > 200) {
+            result.title = result.title.substring(0, 200);
+          }
+        }
+
+        // 如果没有找到或太长，尝试meta标签
+        if (!result.title || result.title.length === 0) {
+          const metaTitle = document.querySelector('meta[property="og:title"]');
+          if (metaTitle) {
+            result.title = metaTitle.getAttribute('content') || '';
+          }
+        }
+
+        // 提取作者名称 - 从用户链接中提取
+        const userLinks = Array.from(document.querySelectorAll('a[href*="/user/"]'));
+        for (const link of userLinks) {
+          const href = link.getAttribute('href');
+          const text = link.textContent?.trim();
+          // 确保是有效的用户链接
+          if (
+            href &&
+            text &&
+            href.includes('/user/') &&
+            !href.includes('self') &&
+            !href.includes('search') &&
+            text.length > 0 &&
+            text.length < 50
+          ) {
+            // 检查是否在视频详情区域
+            const videoDetailSection = link.closest(
+              '[class*="video-detail"], [class*="author"], [class*="user"]'
+            );
+            if (videoDetailSection || link.textContent === text) {
+              result.anchorName = text;
+              break;
+            }
+          }
+        }
+
+        // 如果还没找到，尝试从页面数据结构中提取
+        if (!result.anchorName) {
+          try {
+            const scripts = Array.from(document.querySelectorAll('script'));
+            for (const script of scripts) {
+              if (script.textContent && script.textContent.includes('nickname')) {
+                const match = script.textContent.match(/"nickname":"([^"]+)"/);
+                if (match && match[1]) {
+                  result.anchorName = match[1];
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+
+        // 提取发布时间
+        const timeElements = Array.from(document.querySelectorAll('*'));
+        for (const element of timeElements) {
+          const text = element.textContent || '';
+          if (text.includes('发布时间：')) {
+            const timeMatch = text.match(/发布时间：\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
+            if (timeMatch && timeMatch[1]) {
+              result.publishTime = timeMatch[1];
+              // 尝试转换为时间戳
+              try {
+                const date = new Date(timeMatch[1].replace(' ', 'T'));
+                if (!isNaN(date.getTime())) {
+                  result.publishTimestamp = date.getTime();
+                  result.publishTimeISO = date.toISOString();
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+          }
+        }
+
+        // 提取统计信息（点赞、评论、分享、观看数）
+        // 这些信息通常在特定的元素中，需要根据实际DOM结构调整
+        // 可以尝试查找包含数字和"万"、"K"等单位的文本
+        // TODO: 实现统计信息提取逻辑
+
+        return result;
+      });
+
+      // 如果提取到了基本信息，返回元数据
+      if (metadata.title || metadata.anchorName) {
+        return metadata;
+      }
+
+      return undefined;
+    } catch (error: any) {
+      Logger.verbose(`[VideoDownloader] 提取元数据失败: ${error.message}`);
+      return undefined;
+    }
   }
 
   /**

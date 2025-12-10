@@ -11,6 +11,7 @@ import { getTimestamp } from '../../utils.js';
 import { OutputFormat } from '../../recorders/flvRecorder.js';
 import { getStreamType } from '../../utils/streamUrl.js';
 import { ProgressDisplay } from '../../utils/progressDisplay.js';
+import { writeRecordingMetadata } from '../../utils/metadataWriter.js';
 import {
   DEFAULT_RECORDINGS_DIR,
   DEFAULT_DETECTION_MODE,
@@ -172,15 +173,20 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   });
 
   // Start recording
+  const recordingStartTime = new Date().toISOString();
   try {
+    let actualOutputPath: string;
+    
     if (recorder instanceof SegmentRecorder) {
       await recorder.record(streamInfo.recordUrl, filename.replace(/\.\w+$/, ''), {
         videoOnly,
         audioOnly,
         cookies,
       });
+      // For segment recorder, outputPath is the directory
+      actualOutputPath = outputPath;
     } else {
-      await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
+      actualOutputPath = await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
         videoOnly,
         audioOnly,
         duration,
@@ -189,12 +195,23 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
       });
     }
 
+    const recordingEndTime = new Date().toISOString();
+    let recordingDuration: number | undefined;
+    try {
+      const recorderStatus = recorder.getStatus();
+      if (recorderStatus.startTime) {
+        recordingDuration = Math.floor((Date.now() - recorderStatus.startTime) / 1000);
+      }
+    } catch {
+      // Ignore if getStatus fails
+    }
+
     // Stop progress display and show final stats
     if (progressDisplay) {
       let finalSize: number | undefined;
       try {
-        if (fs.existsSync(outputPath)) {
-          finalSize = fs.statSync(outputPath).size;
+        if (fs.existsSync(actualOutputPath)) {
+          finalSize = fs.statSync(actualOutputPath).size;
         }
       } catch {
         // Ignore file size errors
@@ -208,6 +225,49 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     } else {
       Logger.success(`\n\n✓ Recording completed!`);
       Logger.info(`  Output: ${filename}\n`);
+    }
+
+    // Write metadata (only for non-segment recordings)
+    if (!segment) {
+      try {
+        let fileSize: number | undefined;
+        try {
+          if (fs.existsSync(actualOutputPath)) {
+            fileSize = fs.statSync(actualOutputPath).size;
+          }
+        } catch {
+          // Ignore file size errors
+        }
+
+        await writeRecordingMetadata(actualOutputPath, {
+          roomId: streamInfo.roomId,
+          anchorName: streamInfo.anchorName || 'unknown',
+          title: streamInfo.title || 'unknown',
+          streamInfo: {
+            mode: streamInfo.mode,
+            quality: streamInfo.quality,
+            recordUrl: streamInfo.recordUrl,
+            flvUrl: streamInfo.flvUrl,
+            hlsUrl: streamInfo.hlsUrl,
+            availableQualities: streamInfo.availableQualities,
+          },
+          recording: {
+            startTime: recordingStartTime,
+            endTime: recordingEndTime,
+            duration: recordingDuration,
+            format: outputFormat,
+            audioOnly: audioOnly || false,
+            videoOnly: videoOnly || false,
+            segmentEnabled: false,
+          },
+          file: {
+            size: fileSize,
+          },
+        });
+      } catch (error: any) {
+        Logger.verbose(`[Record Handler] Failed to write metadata: ${error.message}`);
+        // Don't fail the recording if metadata writing fails
+      }
     }
   } catch (error: any) {
     if (progressDisplay) {

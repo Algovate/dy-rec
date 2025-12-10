@@ -9,6 +9,8 @@ import { AppConfig } from '../config/configManager.js';
 import { getErrorMessage } from '../utils/errors.js';
 import { DEFAULT_RECORDINGS_DIR } from '../constants.js';
 import { extractRoomId } from '../utils/roomId.js';
+import { writeRecordingMetadata } from '../utils/metadataWriter.js';
+import * as path from 'path';
 
 type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 
@@ -92,8 +94,14 @@ class RecordingTask {
       }
 
       // 开始录制
+      const recordingStartTime = new Date().toISOString();
+      let actualOutputPath: string | undefined;
+
       if (this.recorder instanceof AutoReconnectRecorder) {
         await this.recorder.start();
+        // AutoReconnectRecorder 的文件路径需要从输出目录和文件名构建
+        const outputDir = this.config.output?.dir || DEFAULT_RECORDINGS_DIR;
+        actualOutputPath = path.join(outputDir, this.getOutputFilename());
       } else {
         if (this.recorder instanceof SegmentRecorder) {
           await this.recorder.record(
@@ -101,12 +109,51 @@ class RecordingTask {
             this.getOutputFilename().replace(/\.\w+$/, ''),
             this.getRecordingOptions()
           );
+          // Segment recorder doesn't have a single output path
+          actualOutputPath = undefined;
         } else {
-          await (this.recorder as FlvRecorder | M3u8Recorder).record(
+          actualOutputPath = await (this.recorder as FlvRecorder | M3u8Recorder).record(
             this.streamInfo.recordUrl,
             this.getOutputFilename(),
             this.getRecordingOptions()
           );
+        }
+      }
+
+      const recordingEndTime = new Date().toISOString();
+      const recordingDuration = this.startTime
+        ? Math.floor((Date.now() - this.startTime) / 1000)
+        : undefined;
+
+      // Write metadata (only for non-segment recordings)
+      if (actualOutputPath && !(this.recorder instanceof SegmentRecorder)) {
+        try {
+          await writeRecordingMetadata(actualOutputPath, {
+            roomId: this.streamInfo?.roomId || this.roomId,
+            anchorName: this.streamInfo?.anchorName || 'unknown',
+            title: this.streamInfo?.title || 'unknown',
+            streamInfo: {
+              mode: this.streamInfo?.mode || 'hybrid',
+              quality: this.streamInfo?.quality || 'origin',
+              recordUrl: this.streamInfo?.recordUrl || '',
+              flvUrl: this.streamInfo?.flvUrl,
+              hlsUrl: this.streamInfo?.hlsUrl,
+              availableQualities: this.streamInfo?.availableQualities,
+            },
+            recording: {
+              startTime: recordingStartTime,
+              endTime: recordingEndTime,
+              duration: recordingDuration,
+              format: this.config.output?.format || 'mp4',
+              audioOnly: this.options.audioOnly || false,
+              videoOnly: this.options.videoOnly || false,
+              segmentEnabled: this.config.output?.segmentEnabled || false,
+            },
+            file: {},
+          });
+        } catch (error: any) {
+          // Don't fail the recording if metadata writing fails
+          console.error(`[Task Manager] Failed to write metadata: ${error.message}`);
         }
       }
 
