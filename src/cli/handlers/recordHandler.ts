@@ -150,6 +150,9 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     Logger.gray('Press Ctrl+C to stop recording\n');
   }
 
+  // Start recording
+  const recordingStartTime = new Date().toISOString();
+  
   // Handle interrupt
   const handleInterrupt = async () => {
     if (progressDisplay) {
@@ -157,6 +160,66 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     }
     Logger.warn('\n\n[Interrupt] Stopping recording...');
     await recorder.stop();
+    
+    let actualOutputPath: string;
+    if (recorder instanceof SegmentRecorder) {
+      actualOutputPath = outputPath;
+    } else {
+      const outputDir = output;
+      actualOutputPath = path.join(outputDir, filename);
+    }
+    
+    // Write metadata even when interrupted
+    if (!segment && fs.existsSync(actualOutputPath)) {
+      try {
+        let finalSize: number | undefined;
+        try {
+          finalSize = fs.statSync(actualOutputPath).size;
+        } catch {
+          // Ignore file size errors
+        }
+
+        let recordingDuration: number | undefined;
+        try {
+          const recorderStatus = recorder.getStatus();
+          if (recorderStatus.startTime) {
+            recordingDuration = Math.floor((Date.now() - recorderStatus.startTime) / 1000);
+          }
+        } catch {
+          // Ignore if getStatus fails
+        }
+
+        const recordingEndTime = new Date().toISOString();
+        await writeRecordingMetadata(actualOutputPath, {
+          roomId: streamInfo.roomId,
+          anchorName: streamInfo.anchorName || 'unknown',
+          title: streamInfo.title || 'unknown',
+          streamInfo: {
+            mode: streamInfo.mode,
+            quality: streamInfo.quality,
+            recordUrl: streamInfo.recordUrl,
+            flvUrl: streamInfo.flvUrl,
+            hlsUrl: streamInfo.hlsUrl,
+            availableQualities: streamInfo.availableQualities,
+          },
+          recording: {
+            startTime: recordingStartTime,
+            endTime: recordingEndTime,
+            duration: recordingDuration,
+            format: outputFormat,
+            audioOnly: audioOnly || false,
+            videoOnly: videoOnly || false,
+            segmentEnabled: false,
+          },
+          file: {
+            size: finalSize,
+          },
+        });
+      } catch (error: any) {
+        Logger.verbose(`[Record Handler] Failed to write metadata: ${error.message}`);
+      }
+    }
+    
     if (progressDisplay) {
       const stats = progressDisplay.getFinalStats();
       Logger.info(`  Duration: ${stats.duration}`);
@@ -172,8 +235,6 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     void handleInterrupt();
   });
 
-  // Start recording
-  const recordingStartTime = new Date().toISOString();
   try {
     let actualOutputPath: string;
     
