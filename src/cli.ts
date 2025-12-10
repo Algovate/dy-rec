@@ -17,7 +17,7 @@ import { VideoDownloader } from './download/videoDownloader.js';
 const program = new Command();
 
 program
-  .name('douyin-recorder')
+  .name('dy-rec')
   .description('Record/download Douyin live streams with advanced features')
   .version('2.0.0');
 

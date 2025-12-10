@@ -1,11 +1,11 @@
 {
-  "name": "douyin-recorder",
+  "name": "dy-rec",
   "version": "2.0.0",
   "description": "A tool to record/download Douyin live streams",
   "main": "dist/cli.js",
   "type": "module",
   "bin": {
-    "douyin-recorder": "./dist/cli.js"
+    "dy-rec": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
