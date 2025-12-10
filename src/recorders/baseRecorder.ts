@@ -17,6 +17,8 @@ export interface ProgressInfo {
   time?: string;
   currentFps?: number;
   currentKbps?: number;
+  fileSize?: number; // Optional file size in bytes (updated by display utility)
+  elapsedSeconds?: number; // Optional elapsed time in seconds (updated by display utility)
 }
 
 export type OutputFormat = 'mp4' | 'ts' | 'fmp4';

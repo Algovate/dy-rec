@@ -1,4 +1,6 @@
 import chalk from 'chalk';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Logger } from '../../utils/logger.js';
 import { StreamDetector, DetectionMode } from '../../core/streamDetector.js';
 import { FlvRecorder } from '../../recorders/flvRecorder.js';
@@ -8,6 +10,7 @@ import { VideoQuality } from '../../api/douyinApi.js';
 import { getTimestamp } from '../../utils.js';
 import { OutputFormat } from '../../recorders/flvRecorder.js';
 import { getStreamType } from '../../utils/streamUrl.js';
+import { ProgressDisplay } from '../../utils/progressDisplay.js';
 import {
   DEFAULT_RECORDINGS_DIR,
   DEFAULT_DETECTION_MODE,
@@ -80,26 +83,10 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   Logger.info(`[Stream] Anchor: ${streamInfo.anchorName || 'Unknown'}`);
   Logger.info(`[Stream] Title: ${streamInfo.title || 'Unknown'}\n`);
 
-  // Select recorder
-  let recorder: FlvRecorder | M3u8Recorder | SegmentRecorder;
+  // Determine output format
   const outputFormat = format as OutputFormat;
 
-  if (segment) {
-    recorder = new SegmentRecorder({
-      outputDir: output,
-      segmentDuration: segmentDuration || 3600,
-    });
-  } else if (getStreamType(streamInfo.recordUrl) === 'm3u8') {
-    // Use M3U8 Recorder for HLS streams
-    recorder = new M3u8Recorder({ outputDir: output });
-  } else {
-    // Use FLV Recorder for FLV streams (default for most Douyin streams)
-    recorder = new FlvRecorder({ outputDir: output });
-  }
-
-  await recorder.init();
-
-  // Generate filename
+  // Generate filename first (needed for progress display path)
   const timestamp = getTimestamp();
   const anchorName = (streamInfo.anchorName || 'unknown').replace(/[^\w\s-]/g, '').trim();
   // Determine file extension based on format and audio options
@@ -113,14 +100,67 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   }
   const filename = `douyin_${streamInfo.roomId}_${anchorName}_${timestamp}.${fileExt}`;
 
+  // Create output path for progress display
+  const outputPath = path.join(output, filename);
+  
+  // Create progress display (only for non-segment recorders)
+  let progressDisplay: ProgressDisplay | null = null;
+  if (!segment) {
+    progressDisplay = new ProgressDisplay({
+      outputPath,
+      updateInterval: 1000, // Update every second
+    });
+  }
+
+  // Create progress callback
+  const progressCallback = (progress: any) => {
+    if (progressDisplay) {
+      progressDisplay.update(progress);
+    }
+  };
+
+  // Select recorder with progress callback
+  let recorder: FlvRecorder | M3u8Recorder | SegmentRecorder;
+
+  if (segment) {
+    recorder = new SegmentRecorder({
+      outputDir: output,
+      segmentDuration: segmentDuration || 3600,
+    });
+  } else if (getStreamType(streamInfo.recordUrl) === 'm3u8') {
+    // Use M3U8 Recorder for HLS streams
+    recorder = new M3u8Recorder({
+      outputDir: output,
+      onProgress: progressCallback,
+    });
+  } else {
+    // Use FLV Recorder for FLV streams (default for most Douyin streams)
+    recorder = new FlvRecorder({
+      outputDir: output,
+      onProgress: progressCallback,
+    });
+  }
+
+  await recorder.init();
+
   Logger.info(chalk.yellow('[2/3] Starting recording...'));
   Logger.info(`Output: ${filename}\n`);
-  Logger.gray('Press Ctrl+C to stop recording\n');
+  if (!segment) {
+    Logger.gray('Press Ctrl+C to stop recording\n');
+  }
 
   // Handle interrupt
   const handleInterrupt = async () => {
+    if (progressDisplay) {
+      progressDisplay.stop();
+    }
     Logger.warn('\n\n[Interrupt] Stopping recording...');
     await recorder.stop();
+    if (progressDisplay) {
+      const stats = progressDisplay.getFinalStats();
+      Logger.info(`  Duration: ${stats.duration}`);
+      Logger.info(`  Size: ${stats.fileSize}\n`);
+    }
     process.exit(0);
   };
 
@@ -132,22 +172,47 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   });
 
   // Start recording
-  if (recorder instanceof SegmentRecorder) {
-    await recorder.record(streamInfo.recordUrl, filename.replace(/\.\w+$/, ''), {
-      videoOnly,
-      audioOnly,
-      cookies,
-    });
-  } else {
-    await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
-      videoOnly,
-      audioOnly,
-      duration,
-      format: outputFormat,
-      cookies,
-    });
-  }
+  try {
+    if (recorder instanceof SegmentRecorder) {
+      await recorder.record(streamInfo.recordUrl, filename.replace(/\.\w+$/, ''), {
+        videoOnly,
+        audioOnly,
+        cookies,
+      });
+    } else {
+      await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
+        videoOnly,
+        audioOnly,
+        duration,
+        format: outputFormat,
+        cookies,
+      });
+    }
 
-  Logger.success(`\n\n✓ Recording completed!`);
-  Logger.info(`  Output: ${filename}\n`);
+    // Stop progress display and show final stats
+    if (progressDisplay) {
+      let finalSize: number | undefined;
+      try {
+        if (fs.existsSync(outputPath)) {
+          finalSize = fs.statSync(outputPath).size;
+        }
+      } catch {
+        // Ignore file size errors
+      }
+      progressDisplay.stop(finalSize);
+      const stats = progressDisplay.getFinalStats();
+      Logger.success(`\n\n✓ Recording completed!`);
+      Logger.info(`  Output: ${filename}`);
+      Logger.info(`  Duration: ${stats.duration}`);
+      Logger.info(`  Size: ${stats.fileSize}\n`);
+    } else {
+      Logger.success(`\n\n✓ Recording completed!`);
+      Logger.info(`  Output: ${filename}\n`);
+    }
+  } catch (error: any) {
+    if (progressDisplay) {
+      progressDisplay.stop();
+    }
+    throw error;
+  }
 }
