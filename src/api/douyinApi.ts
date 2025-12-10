@@ -9,7 +9,6 @@ import {
 import { extractRoomId } from '../utils/roomId.js';
 import { toHttps } from '../utils/streamUrl.js';
 
-
 export interface DouyinApiOptions {
   cookies?: string;
   proxy?: AxiosProxyConfig | null;
@@ -215,7 +214,6 @@ export class DouyinApi {
     if (flvUrl) flvUrl = toHttps(flvUrl);
     if (hlsUrl) hlsUrl = toHttps(hlsUrl);
 
-
     if (!flvUrl && !hlsUrl) {
       throw new Error('无法获取有效的流地址');
     }
@@ -230,7 +228,6 @@ export class DouyinApi {
       recordUrl: flvUrl || hlsUrl, // 优先使用 FLV (more compatible, HLS often fails)
       availableQualities: Object.keys(flvUrls),
     };
-
   }
 
   /**

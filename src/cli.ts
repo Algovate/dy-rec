@@ -11,6 +11,14 @@ import {
 } from './cli/handlers/configHandler.js';
 import { downloadVideo, DownloadOptions } from './cli/handlers/downloadHandler.js';
 import { getErrorMessage } from './utils/errors.js';
+import {
+  DEFAULT_RECORDINGS_DIR,
+  DEFAULT_OUTPUT_DIR,
+  DEFAULT_CONFIG_PATH,
+  DEFAULT_DETECTION_MODE,
+  DEFAULT_QUALITY,
+  DEFAULT_FORMAT,
+} from './constants.js';
 
 const program = new Command();
 
@@ -25,10 +33,11 @@ program
   .alias('r')
   .description('Record a single live room')
   .option('-r, --room <roomId>', 'Douyin live room ID or URL')
-  .option('-o, --output <dir>', 'Output directory', './output/recordings')
-  .option('-m, --mode <mode>', 'Detection mode: api, browser, or hybrid', 'hybrid')
-  .option('-q, --quality <quality>', 'Video quality: origin, uhd, hd, sd, ld', 'origin')
-  .option('--format <format>', 'Output format: mp4, ts, fmp4 (default: fmp4)', 'fmp4')
+  .option('-o, --output <dir>', 'Output directory', DEFAULT_RECORDINGS_DIR)
+  .option('-m, --mode <mode>', 'Detection mode: api, browser, or hybrid', DEFAULT_DETECTION_MODE)
+  .option('-q, --quality <quality>', 'Video quality: origin, uhd, hd, sd, ld', DEFAULT_QUALITY)
+  .option('--format <format>', 'Output format: mp4, ts, fmp4', DEFAULT_FORMAT)
+
   .option('--video-only', 'Record video only')
   .option('--audio-only', 'Record audio only')
   .option('-d, --duration <seconds>', 'Recording duration in seconds', parseInt)
@@ -49,7 +58,7 @@ program
   .command('config')
   .alias('c')
   .description('Record using configuration file')
-  .option('-f, --file <path>', 'Configuration file path', 'config/config.json')
+  .option('-f, --file <path>', 'Configuration file path', DEFAULT_CONFIG_PATH)
   .option('--watch', 'Enable watch mode (auto-detect live status)')
   .action(async (options: ConfigOptions) => {
     try {
@@ -65,7 +74,7 @@ program
   .command('watch')
   .alias('w')
   .description('Watch rooms and auto-record when live')
-  .option('-f, --file <path>', 'Configuration file path', 'config/config.json')
+  .option('-f, --file <path>', 'Configuration file path', DEFAULT_CONFIG_PATH)
   .option('-i, --interval <seconds>', 'Check interval in seconds', parseInt)
   .action(async (options: WatchOptions) => {
     try {
@@ -83,7 +92,7 @@ program
   .description('Download a Douyin video (short video, not live)')
   .requiredOption('-u, --url <url>', 'Douyin video URL (short link or full URL)')
   .option('-o, --output <file>', 'Output filename')
-  .option('--outdir <dir>', 'Output directory', './output/downloads')
+  .option('--outdir <dir>', 'Output directory', DEFAULT_OUTPUT_DIR)
   .option('--timeout <seconds>', 'Timeout in seconds', parseInt)
   .option('--headful', 'Show browser window (for debugging)')
   .action(async (options: DownloadOptions) => {

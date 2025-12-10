@@ -303,7 +303,7 @@ export class BrowserController {
                     result.streamUrl = player[method];
                     break;
                   }
-                } catch (e) {
+                } catch {
                   // 继续尝试下一个
                 }
               }
@@ -330,7 +330,7 @@ export class BrowserController {
                       }
                     }
                   }
-                } catch (e) {
+                } catch {
                   // 忽略错误
                 }
               }
@@ -520,11 +520,11 @@ export class BrowserController {
                 }
               }
             }
-          } catch (error) {
+          } catch {
             // 忽略解析错误
           }
         });
-      } catch (error) {
+      } catch {
         // 忽略 WebSocket 监听错误
       }
     });
@@ -619,7 +619,7 @@ export class BrowserController {
           this.onStreamDetected('injected', detectedUrl);
         }
       }
-    } catch (error: any) {
+    } catch {
       // 忽略错误
     }
   }

@@ -5,7 +5,7 @@ import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_DETECTION_MODE,
   DEFAULT_QUALITY,
-  DEFAULT_OUTPUT_DIR,
+  DEFAULT_RECORDINGS_DIR,
   DEFAULT_FORMAT,
   DEFAULT_SEGMENT_DURATION,
   DEFAULT_WATCH_INTERVAL,
@@ -14,6 +14,7 @@ import {
   VALID_DETECTION_MODES,
   VALID_QUALITIES,
 } from '../constants.js';
+
 import { ConfigurationError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -102,7 +103,8 @@ export class ConfigManager {
     const defaultConfig: AppConfig = {
       mode: DEFAULT_DETECTION_MODE,
       output: {
-        dir: DEFAULT_OUTPUT_DIR,
+        dir: DEFAULT_RECORDINGS_DIR,
+
         format: DEFAULT_FORMAT,
         segmentDuration: DEFAULT_SEGMENT_DURATION,
         segmentEnabled: false,

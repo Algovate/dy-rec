@@ -5,7 +5,6 @@ import { extractRoomId } from '../utils/roomId.js';
 import { StreamDetectionError, StreamValidationError } from '../utils/errors.js';
 import { validateStreamUrl } from '../utils/streamUrl.js';
 
-
 export type DetectionMode = 'api' | 'browser' | 'hybrid';
 
 export interface StreamDetectorOptions {
@@ -270,9 +269,9 @@ export class StreamDetector {
       console.log(chalk.green(`[Stream Detector] Stream URL is reachable (Status: ${status})`));
       return;
     }
-    console.warn(chalk.yellow(`[Stream Detector] Stream URL validation failed (Status: ${status})`));
+    console.warn(
+      chalk.yellow(`[Stream Detector] Stream URL validation failed (Status: ${status})`)
+    );
     throw new StreamValidationError(`Stream URL is unreachable`, status);
   }
 }
-
-

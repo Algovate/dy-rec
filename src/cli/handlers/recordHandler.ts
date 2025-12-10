@@ -15,7 +15,6 @@ import {
   VALID_OUTPUT_FORMATS,
 } from '../../constants.js';
 
-
 export interface RecordOptions {
   room?: string;
   output?: string;
@@ -96,7 +95,6 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     // Use FLV Recorder for FLV streams (default for most Douyin streams)
     recorder = new FlvRecorder({ outputDir: output });
   }
-
 
   await recorder.init();
 

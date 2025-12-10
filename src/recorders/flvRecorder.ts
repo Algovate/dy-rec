@@ -1,6 +1,13 @@
 import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
-import { BaseRecorder, BaseRecorderOptions, RecordingStatus, ProgressInfo, OutputFormat, RecordingOptions } from './baseRecorder.js';
+import {
+  BaseRecorder,
+  BaseRecorderOptions,
+  RecordingStatus,
+  ProgressInfo,
+  OutputFormat,
+  RecordingOptions,
+} from './baseRecorder.js';
 import {
   getStreamInputOptions,
   configureCodecs,
