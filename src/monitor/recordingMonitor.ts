@@ -179,6 +179,11 @@ export class AutoReconnectRecorder {
   async start(): Promise<void> {
     this.isRecording = true;
 
+    // 确保录制器已初始化（创建输出目录）
+    if ('init' in this.recorder && typeof this.recorder.init === 'function') {
+      await (this.recorder as any).init();
+    }
+
     // 启动监控
     void this.monitor.monitor(this.recorder, () => this.restart(), {
       streamUrl: this.streamUrl,
@@ -209,6 +214,11 @@ export class AutoReconnectRecorder {
 
     // 等待一小段时间
     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // 确保录制器已初始化（创建输出目录）
+    if ('init' in this.recorder && typeof this.recorder.init === 'function') {
+      await (this.recorder as any).init();
+    }
 
     // 重新开始录制
     await this.recorder.record(this.streamUrl, this.outputPath, this.options);

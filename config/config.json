@@ -1,7 +1,7 @@
 {
   "mode": "hybrid",
   "output": {
-    "dir": "./downloads",
+    "dir": "./output/recordings",
     "format": "mp4",
     "segmentDuration": 3600,
     "segmentEnabled": false

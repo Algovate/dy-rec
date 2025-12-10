@@ -7,6 +7,7 @@ import { SegmentRecorder } from '../recorders/segmentRecorder.js';
 import { RecordingMonitor, AutoReconnectRecorder } from '../monitor/recordingMonitor.js';
 import { AppConfig } from '../config/configManager.js';
 import { getErrorMessage } from '../utils/errors.js';
+import { DEFAULT_RECORDINGS_DIR } from '../constants.js';
 
 type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 
@@ -66,6 +67,9 @@ class RecordingTask {
       // 选择录制器（需要 streamInfo）
       const recorder = this.createRecorder();
 
+      // 初始化录制器（确保输出目录存在）
+      await recorder.init();
+
       // 创建监控器（仅对 FlvRecorder 和 M3u8Recorder 支持）
       if (this.config.recording?.reconnect && !(recorder instanceof SegmentRecorder)) {
         this.monitor = new RecordingMonitor({
@@ -88,7 +92,6 @@ class RecordingTask {
       if (this.recorder instanceof AutoReconnectRecorder) {
         await this.recorder.start();
       } else {
-        await (this.recorder as FlvRecorder | M3u8Recorder | SegmentRecorder).init();
         if (this.recorder instanceof SegmentRecorder) {
           await this.recorder.record(
             this.streamInfo.recordUrl,
@@ -123,7 +126,7 @@ class RecordingTask {
   }
 
   private createRecorder(): FlvRecorder | M3u8Recorder | SegmentRecorder {
-    const outputDir = this.config.output?.dir || './downloads';
+    const outputDir = this.config.output?.dir || DEFAULT_RECORDINGS_DIR;
     const format = this.config.output?.format || 'mp4';
     const segmentEnabled = this.config.output?.segmentEnabled || false;
 

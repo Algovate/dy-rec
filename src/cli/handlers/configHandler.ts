@@ -1,4 +1,6 @@
 import chalk from 'chalk';
+import * as path from 'path';
+import * as fs from 'fs';
 import { ConfigManager } from '../../config/configManager.js';
 import { TaskManager } from '../../core/taskManager.js';
 import { RoomWatcher } from '../../monitor/roomWatcher.js';
@@ -69,13 +71,83 @@ export async function recordWithConfig(options: ConfigOptions): Promise<void> {
     void handleInterrupt();
   });
 
+  // Helper function to format seconds to HH:MM:SS
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const value = bytes / Math.pow(k, i);
+    return `${value.toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+  };
+
+  // Helper function to get file size from output directory
+  const getFileSize = (outputDir: string, roomId: string): number => {
+    try {
+      // Try to find the most recent file for this room
+      if (fs.existsSync(outputDir)) {
+        const files = fs.readdirSync(outputDir);
+        const roomFiles = files.filter((f) => f.startsWith(`douyin_${roomId}_`));
+        if (roomFiles.length > 0) {
+          // Sort by modification time (newest first)
+          const sortedFiles = roomFiles.sort((a, b) => {
+            const statA = fs.statSync(path.join(outputDir, a));
+            const statB = fs.statSync(path.join(outputDir, b));
+            return statB.mtimeMs - statA.mtimeMs;
+          });
+          const latestFile = sortedFiles[0];
+          const filePath = path.join(outputDir, latestFile);
+          const stats = fs.statSync(filePath);
+          return stats.size;
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+    return 0;
+  };
+
   // Periodically show status
   setInterval(() => {
     const statuses = taskManager.getAllStatus();
     if (statuses.length > 0) {
       console.log(chalk.cyan(`\n[Status] Active tasks: ${statuses.length}`));
       for (const status of statuses) {
-        console.log(chalk.gray(`  - ${status.roomId}: ${status.status} (${status.elapsed}s)`));
+        const outputDir = config.output?.dir || './output/recordings';
+        const fileSize = getFileSize(outputDir, status.roomId);
+        const duration = formatDuration(status.elapsed);
+        const sizeStr = fileSize > 0 ? formatFileSize(fileSize) : '--';
+        
+        // Build status line
+        let statusLine = `  - ${chalk.yellow(status.roomId)}: ${chalk.green(status.status)}`;
+        
+        // Add anchor name if available
+        if (status.streamInfo?.anchorName) {
+          statusLine += ` | ${chalk.cyan(status.streamInfo.anchorName)}`;
+        }
+        
+        // Add duration and size
+        statusLine += ` | ${chalk.blue(`Duration: ${duration}`)} | ${chalk.magenta(`Size: ${sizeStr}`)}`;
+        
+        // Add recorder duration if available
+        if (status.recorderStatus?.duration && status.recorderStatus.duration !== '00:00:00') {
+          statusLine += ` | ${chalk.gray(`FFmpeg: ${status.recorderStatus.duration}`)}`;
+        }
+        
+        console.log(statusLine);
+        
+        // Show error if any
+        if (status.error) {
+          console.log(chalk.red(`    Error: ${status.error}`));
+        }
       }
     }
   }, 10000);
