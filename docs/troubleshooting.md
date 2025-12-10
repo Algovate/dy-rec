@@ -9,10 +9,10 @@
 npm start record -r 379595210124
 
 # ✅ 正确
-npm start -- record -r 379595210124
+npm start -- 379595210124
 
 # ✅ 或直接运行编译后的代码
-node dist/cli.js record -r 379595210124
+node dist/cli.js 379595210124
 ```
 
 ## FFmpeg 未找到
@@ -49,7 +49,7 @@ tsc src/cli.ts
 
 1. **需要 Cookie**: 抖音 API 可能有反爬虫机制，需要配置 Cookie
    ```bash
-   node dist/cli.js record -r 379595210124 -m api --cookies "your_cookie_here"
+   node dist/cli.js 379595210124 -m api --cookies "your_cookie_here"
    ```
 
 2. **API 已更新**: 抖音可能更新了 API 格式，此时应使用浏览器模式

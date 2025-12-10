@@ -21,7 +21,7 @@ src/
 npm run build
 
 # 开发模式（直接运行 TS，无需编译）
-npm run dev record -r 379595210124
+npm run dev 379595210124
 
 # 代码检查
 npm run lint

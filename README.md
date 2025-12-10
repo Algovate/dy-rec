@@ -31,61 +31,63 @@ npm run build
 ## 快速开始
 
 ```bash
-# 录制单个直播间
-node dist/cli.js record -r 379595210124
+# 录制单个直播间 (默认命令)
+node dist/cli.js 379595210124
+# 或者显式使用 record 命令
+node dist/cli.js record 379595210124
 
 # 开发模式（无需编译）
-npm run dev record -r 379595210124
+npm run dev 379595210124
 ```
 
-**注意**: 使用 `npm start` 时需要用 `--` 分隔参数：`npm start -- record -r 379595210124`
+**注意**: 使用 `npm start` 时需要用 `--` 分隔参数：`npm start -- 379595210124`
 
 ## 主要功能
 
 ### 直播录制
 
 ```bash
-# 基本录制
-node dist/cli.js record -r 379595210124
+# 基本录制 (只需房间ID/URL)
+node dist/cli.js 379595210124
 
 # 指定输出目录
-node dist/cli.js record -r 379595210124 -o ./videos
+node dist/cli.js record 379595210124 -o ./videos
 
 # 指定画质
-node dist/cli.js record -r 379595210124 -q hd
+node dist/cli.js record 379595210124 -q hd
 
 # 仅录制音频
-node dist/cli.js record -r 379595210124 --audio-only
+node dist/cli.js record 379595210124 --audio-only
 
 # 使用 TS 格式（边录边播，中断安全）
-node dist/cli.js record -r 379595210124 --format ts
+node dist/cli.js record 379595210124 --format ts
 ```
 
 ### 分段录制
 
 ```bash
 # 每 30 分钟自动分段（适合长时间录制）
-node dist/cli.js record -r 379595210124 --segment --segment-duration 1800
+node dist/cli.js record 379595210124 --segment --segment-duration 1800
 ```
 
 ### 短视频下载
 
 ```bash
 # 下载短视频（支持短链）
-node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/'
+node dist/cli.js download 'https://v.douyin.com/xxxxxx/'
 
 # 指定输出文件名
-node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/' -o my_video.mp4
+node dist/cli.js download 'https://v.douyin.com/xxxxxx/' -o my_video.mp4
 ```
 
-### 配置文件模式
+### 配置文件批量处理
 
 ```bash
-# 使用配置文件批量录制
-node dist/cli.js config
+# 批量检测并录制 (一次性执行)
+node dist/cli.js batch
 
 # 指定配置文件
-node dist/cli.js config -f /path/to/config.json
+node dist/cli.js batch -c /path/to/config.json
 ```
 
 ### 监听模式
@@ -94,8 +96,8 @@ node dist/cli.js config -f /path/to/config.json
 # 自动监控配置中的房间，开播时自动录制
 node dist/cli.js watch
 
-# 指定检查间隔（秒）
-node dist/cli.js watch -i 30
+# 指定检查间隔（秒）和配置文件
+node dist/cli.js watch -i 30 -c config.json
 ```
 
 ## 文档

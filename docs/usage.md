@@ -3,26 +3,34 @@
 ## 基本命令
 
 ```bash
-# 录制单个直播间
-node dist/cli.js record -r 379595210124
+# 录制单个直播间 (默认命令)
+node dist/cli.js 379595210124
+# 或者显式使用 record 命令
+node dist/cli.js record 379595210124
 
 # 开发模式（无需编译）
-npm run dev record -r 379595210124
+npm run dev 379595210124
 ```
 
-**注意**: 使用 `npm start` 时需要用 `--` 分隔参数：`npm start -- record -r 379595210124`
+**注意**: 使用 `npm start` 时需要用 `--` 分隔参数：`npm start -- 379595210124`
 
 ## 命令选项
 
 ### `record` - 单房间录制
 
 ```bash
-node dist/cli.js record -r <roomId> [options]
+node dist/cli.js record <roomId> [options]
+# 或直接
+node dist/cli.js <roomId> [options]
 ```
+
+**参数**:
+- `<roomId>`: 抖音直播间 ID 或 URL (必填)
+
+**选项**:
 
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
-| `-r, --room <roomId>` | 抖音直播间 ID 或 URL | - |
 | `-o, --output <dir>` | 输出目录 | `./downloads` |
 | `-m, --mode <mode>` | 检测模式: `api`, `browser`, `hybrid` | `hybrid` |
 | `-q, --quality <quality>` | 画质: `origin`, `uhd`, `hd`, `sd`, `ld` | `origin` |
@@ -46,16 +54,15 @@ node dist/cli.js record -r <roomId> [options]
 - `ts`: MPEG-TS 格式，支持边录边播，中断安全
 - `mp4`: 标准 MP4 格式，兼容性最好，但中断会丢失数据
 
-### `config` - 配置文件模式
+### `batch` - 配置文件批量处理
 
 ```bash
-node dist/cli.js config [options]
+node dist/cli.js batch [options]
 ```
 
 **选项**:
 
-- `-f, --file <path>`: 配置文件路径 (默认: `config/config.json`)
-- `--watch`: 启用监听模式
+- `-c, --config <path>`: 配置文件路径 (默认: `config/config.json`)
 
 ### `watch` - 监听模式
 
@@ -65,18 +72,20 @@ node dist/cli.js watch [options]
 
 **选项**:
 
-- `-f, --file <path>`: 配置文件路径 (默认: `config/config.json`)
+- `-c, --config <path>`: 配置文件路径 (默认: `config/config.json`)
 - `-i, --interval <sec>`: 检查间隔（秒）
 
 ### `download` - 短视频下载
 
 ```bash
-node dist/cli.js download -u <url> [options]
+node dist/cli.js download <url> [options]
 ```
+
+**参数**:
+- `<url>`: 抖音视频链接（必填，支持短链和完整链接）
 
 **选项**:
 
-- `-u, --url <url>`: 抖音视频链接（必填，支持短链和完整链接）
 - `-o, --output <file>`: 输出文件名
 - `--outdir <dir>`: 输出目录 (默认: `./recordings`)
 - `--timeout <seconds>`: 超时时间（秒）(默认: 30)
@@ -101,31 +110,31 @@ node dist/cli.js download -u <url> [options]
 ### 录制单个直播间
 
 ```bash
-node dist/cli.js record -r 379595210124 -o ./videos
+node dist/cli.js 379595210124 -o ./videos
 ```
 
 ### 仅录制音频
 
 ```bash
-node dist/cli.js record -r 379595210124 --audio-only
+node dist/cli.js 379595210124 --audio-only
 ```
 
 ### 使用 TS 格式（边录边播，中断安全）
 
 ```bash
-node dist/cli.js record -r 379595210124 --format ts
+node dist/cli.js 379595210124 --format ts
 ```
 
 ### 分段录制（每 30 分钟一段）
 
 ```bash
-node dist/cli.js record -r 379595210124 --segment --segment-duration 1800
+node dist/cli.js 379595210124 --segment --segment-duration 1800
 ```
 
-### 使用配置文件
+### 使用配置文件批量处理
 
 ```bash
-node dist/cli.js config
+node dist/cli.js batch
 ```
 
 ### 监听模式（自动监控房间，开播时自动录制）
@@ -138,15 +147,14 @@ node dist/cli.js watch
 
 ```bash
 # 支持短链
-node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/'
+node dist/cli.js download 'https://v.douyin.com/xxxxxx/'
 
 # 完整链接
-node dist/cli.js download -u 'https://www.douyin.com/video/1234567890'
+node dist/cli.js download 'https://www.douyin.com/video/1234567890'
 
 # 指定输出文件名
-node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/' -o my_video.mp4
+node dist/cli.js download 'https://v.douyin.com/xxxxxx/' -o my_video.mp4
 
 # 指定输出目录
-node dist/cli.js download -u 'https://v.douyin.com/xxxxxx/' --outdir downloads
+node dist/cli.js download 'https://v.douyin.com/xxxxxx/' --outdir downloads
 ```
-

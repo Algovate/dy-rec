@@ -102,13 +102,15 @@ API 配置：
 ## 使用配置文件
 
 ```bash
-# 使用默认配置文件
-node dist/cli.js config
+# 批量检测并录制 (使用默认配置文件)
+node dist/cli.js batch
 
 # 指定配置文件
-node dist/cli.js config -f /path/to/config.json
+node dist/cli.js batch -c /path/to/config.json
 
 # 启用监听模式
-node dist/cli.js config --watch
+node dist/cli.js watch
+# 指定配置文件和间隔
+node dist/cli.js watch -c /path/to/config.json -i 30
 ```
 
