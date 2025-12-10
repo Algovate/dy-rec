@@ -1,5 +1,8 @@
 import puppeteer, { Browser, Page, PuppeteerLaunchOptions } from 'puppeteer';
 import { DEFAULT_BROWSER_USER_AGENT, DOUYIN_LIVE_BASE_URL } from '../constants.js';
+import { StreamCollector } from './streamCollector.js';
+import { matchesStreamPattern } from '../utils/urlFilter.js';
+import { extractMetadata, PageMetadata } from '../utils/metadataExtractor.js';
 
 export interface BrowserControllerOptions {
   headless?: boolean;
@@ -15,18 +18,14 @@ export class BrowserController {
   private browser: Browser | null = null;
   private page: Page | null = null;
   private requestUrls: Set<string> = new Set();
-  private flvUrls: string[] = [];
-  private hlsUrls: string[] = [];
-  private dashUrls: string[] = [];
-  private streamUrls: string[] = []; // 通用流 URL 列表
-  private onStreamDetected?: (type: string, url: string) => void;
+  private streamCollector: StreamCollector;
   private userAgent: string;
   private headless: boolean;
 
   constructor(options: BrowserControllerOptions = {}) {
-    this.onStreamDetected = options.onStreamDetected;
     this.userAgent = options.userAgent || DEFAULT_BROWSER_USER_AGENT;
     this.headless = options.headless !== undefined ? options.headless : false;
+    this.streamCollector = new StreamCollector(options.onStreamDetected);
   }
 
   /**
@@ -84,85 +83,10 @@ export class BrowserController {
     this.page.on('request', (request) => {
       const url = request.url();
       this.requestUrls.add(url);
-
-      // 检测 FLV 文件
-      if (url.includes('.flv')) {
-        if (!this.flvUrls.includes(url)) {
-          this.flvUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] FLV: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('flv', url);
-          }
-        }
-      }
-
-      // 检测 HLS 流 (.m3u8)
-      if (url.includes('.m3u8')) {
-        if (!this.hlsUrls.includes(url)) {
-          this.hlsUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] HLS: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('hls', url);
-          }
-        }
-      }
-
-      // 检测 DASH 流 (.mpd)
-      if (url.includes('.mpd')) {
-        if (!this.dashUrls.includes(url)) {
-          this.dashUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] DASH: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('dash', url);
-          }
-        }
-      }
-
-      // 检测其他可能的流 URL（包含 pull、stream 等关键词）
-      // 但排除 API 端点、配置文件和明显非流的 URL
-      const isNonStreamUrl =
-        url.includes('/api/') ||
-        url.includes('/webcast/') ||
-        url.includes('/aweme/') ||
-        url.includes('/solution/') ||
-        url.includes('config') ||
-        url.includes('setting') ||
-        url.includes('user/') ||
-        url.includes('gift/') ||
-        url.includes('ranklist/') ||
-        url.includes('lottery/') ||
-        url.includes('im/') ||
-        url.includes('privilege/') ||
-        url.includes('emoji') ||
-        url.includes('short_touch') ||
-        url.includes('interaction/') ||
-        url.includes('luckybox/') ||
-        url.includes('banner') ||
-        url.includes('ab/params') ||
-        url.includes('get/user/settings');
-
-      if (
-        (url.includes('pull') || url.includes('stream')) &&
-        !url.includes('.flv') &&
-        !url.includes('.m3u8') &&
-        !url.includes('.mpd') &&
-        !isNonStreamUrl &&
-        !this.streamUrls.includes(url)
-      ) {
-        // 只记录 media 类型的请求作为流 URL
-        const resourceType = request.resourceType();
-        if (resourceType === 'media') {
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] Other stream: ${url} (type: ${resourceType})`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('other', url);
-          }
-        }
-        // 不再记录 xhr/fetch 类型的非流 URL 到控制台
-      }
+      
+      // Use stream collector to handle stream detection
+      const resourceType = request.resourceType();
+      this.streamCollector.addFromRequest(url, resourceType);
 
       // 继续请求
       void request.continue();
@@ -174,45 +98,8 @@ export class BrowserController {
       const headers = response.headers();
       const contentType = headers['content-type'] || '';
 
-      // 检测 FLV 响应
-      if (contentType.includes('video/x-flv') || url.includes('.flv')) {
-        if (!this.flvUrls.includes(url)) {
-          this.flvUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] FLV Response: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('flv', url);
-          }
-        }
-      }
-
-      // 检测 HLS 响应
-      if (
-        contentType.includes('application/vnd.apple.mpegurl') ||
-        contentType.includes('application/x-mpegURL') ||
-        url.includes('.m3u8')
-      ) {
-        if (!this.hlsUrls.includes(url)) {
-          this.hlsUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] HLS Response: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('hls', url);
-          }
-        }
-      }
-
-      // 检测 DASH 响应
-      if (contentType.includes('application/dash+xml') || url.includes('.mpd')) {
-        if (!this.dashUrls.includes(url)) {
-          this.dashUrls.push(url);
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] DASH Response: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('dash', url);
-          }
-        }
-      }
+      // Use stream collector to handle response stream detection
+      this.streamCollector.addFromResponse(url, contentType);
     });
   }
 
@@ -369,13 +256,7 @@ export class BrowserController {
 
       if (streamInfo.streamUrl) {
         const url = streamInfo.streamUrl;
-        if (!this.streamUrls.includes(url)) {
-          this.streamUrls.push(url);
-          console.log(`[Stream Detected] From MediaStream/Player: ${url}`);
-          if (this.onStreamDetected) {
-            this.onStreamDetected('mediastream', url);
-          }
-        }
+        this.streamCollector.addFromRequest(url, 'media');
       } else {
         console.log(
           `[Browser] MediaStream detection: video=${streamInfo.hasVideo}, srcObject=${streamInfo.hasSrcObject}, playerMethods=${streamInfo.playerMethods.length}`
@@ -395,18 +276,19 @@ export class BrowserController {
   async waitForStream(timeout: number = 60000): Promise<string[]> {
     const startTime = Date.now();
     // 等待任何类型的流被检测到
-    while (this.streamUrls.length === 0 && Date.now() - startTime < timeout) {
+    while (!this.streamCollector.hasUrls() && Date.now() - startTime < timeout) {
       // 定期尝试从注入的脚本中提取流 URL
       await this.extractDetectedStreamUrl();
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    if (this.streamUrls.length === 0) {
+    if (!this.streamCollector.hasUrls()) {
       // 提供更详细的错误信息
+      const collection = this.streamCollector.getCollection();
       const detectedTypes = [];
-      if (this.flvUrls.length > 0) detectedTypes.push(`FLV: ${this.flvUrls.length}`);
-      if (this.hlsUrls.length > 0) detectedTypes.push(`HLS: ${this.hlsUrls.length}`);
-      if (this.dashUrls.length > 0) detectedTypes.push(`DASH: ${this.dashUrls.length}`);
+      if (collection.flvUrls.length > 0) detectedTypes.push(`FLV: ${collection.flvUrls.length}`);
+      if (collection.hlsUrls.length > 0) detectedTypes.push(`HLS: ${collection.hlsUrls.length}`);
+      if (collection.dashUrls.length > 0) detectedTypes.push(`DASH: ${collection.dashUrls.length}`);
       const errorMsg =
         detectedTypes.length > 0
           ? `检测到流但未添加到列表: ${detectedTypes.join(', ')}`
@@ -414,35 +296,35 @@ export class BrowserController {
       throw new Error(`No stream detected within timeout period. ${errorMsg}`);
     }
 
-    return this.streamUrls;
+    return this.streamCollector.getAllUrls();
   }
 
   /**
    * 获取检测到的 FLV URLs
    */
   getFlvUrls(): string[] {
-    return [...this.flvUrls];
+    return this.streamCollector.getFlvUrls();
   }
 
   /**
    * 获取检测到的 HLS URLs
    */
   getHlsUrls(): string[] {
-    return [...this.hlsUrls];
+    return this.streamCollector.getHlsUrls();
   }
 
   /**
    * 获取检测到的 DASH URLs
    */
   getDashUrls(): string[] {
-    return [...this.dashUrls];
+    return this.streamCollector.getDashUrls();
   }
 
   /**
    * 获取所有检测到的流 URLs
    */
   getAllStreamUrls(): string[] {
-    return [...this.streamUrls];
+    return this.streamCollector.getAllUrls();
   }
 
   /**
@@ -451,32 +333,7 @@ export class BrowserController {
    * SD (标清), HD (高清), LD (流畅)
    */
   getBestQualityUrl(): string | null {
-    // 优先使用 HLS（更稳定）
-    if (this.hlsUrls.length > 0) {
-      return this.hlsUrls[0];
-    }
-
-    // 然后尝试 FLV
-    if (this.flvUrls.length > 0) {
-      // 优先选择 HD，然后 SD，最后 LD
-      const hdUrl = this.flvUrls.find((url) => url.includes('_hd.flv') || url.includes('hd'));
-      const sdUrl = this.flvUrls.find((url) => url.includes('_sd.flv') || url.includes('sd'));
-      const ldUrl = this.flvUrls.find((url) => url.includes('_ld') || url.includes('ld'));
-
-      return hdUrl || sdUrl || ldUrl || this.flvUrls[0];
-    }
-
-    // 最后尝试 DASH
-    if (this.dashUrls.length > 0) {
-      return this.dashUrls[0];
-    }
-
-    // 如果都没有，返回第一个检测到的流
-    if (this.streamUrls.length > 0) {
-      return this.streamUrls[0];
-    }
-
-    return null;
+    return this.streamCollector.getBestQualityUrl();
   }
 
   /**
@@ -525,21 +382,16 @@ export class BrowserController {
             // 查找可能的流 URL 模式
             const urlPatterns = [
               /https?:\/\/[^\s"']+\.(flv|m3u8|mpd)/gi,
-              /https?:\/\/[^\s"']*pull[^\s"']*/gi,
-              /https?:\/\/[^\s"']*stream[^\s"']*/gi,
-              /https?:\/\/[^\s"']*live[^\s"']*/gi,
+              /https?:\/\/[^\s"']*pull[^\s"']*\.flv/gi,
+              /https?:\/\/[^\s"']*stream[^\s"']*\.(flv|m3u8)/gi,
             ];
 
             for (const pattern of urlPatterns) {
               const matches = dataStr.match(pattern);
               if (matches) {
                 for (const match of matches) {
-                  if (!this.streamUrls.includes(match)) {
-                    this.streamUrls.push(match);
-                    console.log(`[Stream Detected] From WebSocket: ${match}`);
-                    if (this.onStreamDetected) {
-                      this.onStreamDetected('websocket', match);
-                    }
+                  if (matchesStreamPattern(match)) {
+                    this.streamCollector.addFromRequest(match, 'websocket');
                   }
                 }
               }
@@ -564,6 +416,23 @@ export class BrowserController {
 
     try {
       await this.page.evaluateOnNewDocument(() => {
+        // Inline URL pattern matching (runs in browser context)
+        const isNonStreamUrl = (url: string) => {
+          const patterns = ['/api/', '/webcast/', '/aweme/', '/solution/', 'config', 'setting'];
+          return patterns.some((p) => url.includes(p));
+        };
+        
+        const matchesStreamPattern = (url: string) => {
+          if (isNonStreamUrl(url)) return false;
+          return (
+            url.includes('.flv') ||
+            url.includes('.m3u8') ||
+            url.includes('.mpd') ||
+            (url.includes('pull') && url.includes('.flv')) ||
+            (url.includes('stream') && (url.includes('.flv') || url.includes('.m3u8')))
+          );
+        };
+
         // 监听 Fetch 请求
         const originalFetch = window.fetch;
         window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
@@ -576,22 +445,9 @@ export class BrowserController {
             url = input.toString();
           }
 
-          if (url) {
-            // 检查是否是流相关的 URL（排除 API 端点）
-            const isStreamUrl =
-              (url.includes('.flv') ||
-                url.includes('.m3u8') ||
-                url.includes('.mpd') ||
-                (url.includes('pull') && url.includes('.flv')) ||
-                (url.includes('stream') && (url.includes('.flv') || url.includes('.m3u8')))) &&
-              !url.includes('/api/') &&
-              !url.includes('/webcast/') &&
-              !url.includes('/aweme/');
-
-            if (isStreamUrl) {
-              (window as any).__detectedStreamUrl = url;
-              console.log('[Stream Detected] From Fetch:', url);
-            }
+          if (url && matchesStreamPattern(url)) {
+            (window as any).__detectedStreamUrl = url;
+            console.log('[Stream Detected] From Fetch:', url);
           }
           return originalFetch.call(this, input, init);
         };
@@ -606,22 +462,9 @@ export class BrowserController {
           password?: string | null
         ) {
           const urlStr = typeof url === 'string' ? url : url.toString();
-          if (urlStr) {
-            // 检查是否是流相关的 URL（排除 API 端点）
-            const isStreamUrl =
-              (urlStr.includes('.flv') ||
-                urlStr.includes('.m3u8') ||
-                urlStr.includes('.mpd') ||
-                (urlStr.includes('pull') && urlStr.includes('.flv')) ||
-                (urlStr.includes('stream') && (urlStr.includes('.flv') || urlStr.includes('.m3u8')))) &&
-              !urlStr.includes('/api/') &&
-              !urlStr.includes('/webcast/') &&
-              !urlStr.includes('/aweme/');
-
-            if (isStreamUrl) {
-              (window as any).__detectedStreamUrl = urlStr;
-              console.log('[Stream Detected] From XHR:', urlStr);
-            }
+          if (urlStr && matchesStreamPattern(urlStr)) {
+            (window as any).__detectedStreamUrl = urlStr;
+            console.log('[Stream Detected] From XHR:', urlStr);
           }
           return originalOpen.call(this, method, url, async ?? true, username, password);
         };
@@ -644,12 +487,8 @@ export class BrowserController {
         return (window as any).__detectedStreamUrl || null;
       });
 
-      if (detectedUrl && !this.streamUrls.includes(detectedUrl)) {
-        this.streamUrls.push(detectedUrl);
-        console.log(`[Stream Detected] From injected script: ${detectedUrl}`);
-        if (this.onStreamDetected) {
-          this.onStreamDetected('injected', detectedUrl);
-        }
+      if (detectedUrl) {
+        this.streamCollector.addFromRequest(detectedUrl, 'xhr');
       }
     } catch {
       // 忽略错误
@@ -659,118 +498,11 @@ export class BrowserController {
   /**
    * 从页面提取元数据（主播名、标题等）
    */
-  async extractPageMetadata(): Promise<{ anchorName: string; title: string }> {
+  async extractPageMetadata(): Promise<PageMetadata> {
     if (!this.page) {
       return { anchorName: '', title: '' };
     }
-
-    try {
-      const metadata = await this.page.evaluate(() => {
-        const result: { anchorName: string; title: string } = {
-          anchorName: '',
-          title: '',
-        };
-
-        // 尝试多种选择器提取主播名
-        const anchorSelectors = [
-          '[data-e2e="live-room-anchor-name"]',
-          '.live-room-anchor-name',
-          '.anchor-name',
-          '.nickname',
-          'h1',
-          'h2',
-          '.room-title',
-          '[class*="anchor"]',
-          '[class*="nickname"]',
-        ];
-
-        for (const selector of anchorSelectors) {
-          const element = document.querySelector(selector);
-          if (element) {
-            const text = element.textContent?.trim();
-            if (text && text.length > 0 && text.length < 50) {
-              result.anchorName = text;
-              break;
-            }
-          }
-        }
-
-        // 如果没有找到，尝试从页面标题提取
-        if (!result.anchorName) {
-          const pageTitle = document.title;
-          if (pageTitle) {
-            // 抖音直播间标题格式通常是 "主播名 - 抖音直播"
-            const match = pageTitle.match(/^(.+?)\s*[-|–|—]\s*抖音/);
-            if (match && match[1]) {
-              result.anchorName = match[1].trim();
-            } else {
-              result.anchorName = pageTitle.split(' - ')[0] || pageTitle.split(' | ')[0] || '';
-            }
-          }
-        }
-
-        // 提取直播标题
-        const titleSelectors = [
-          '[data-e2e="live-room-title"]',
-          '.live-room-title',
-          '.room-title',
-          '[class*="title"]',
-          '.subtitle',
-        ];
-
-        for (const selector of titleSelectors) {
-          const element = document.querySelector(selector);
-          if (element) {
-            const text = element.textContent?.trim();
-            if (text && text.length > 0 && text.length < 200) {
-              result.title = text;
-              break;
-            }
-          }
-        }
-
-        // 尝试从 meta 标签获取
-        if (!result.title) {
-          const metaTitle = document.querySelector('meta[property="og:title"]');
-          if (metaTitle) {
-            const content = metaTitle.getAttribute('content');
-            if (content) {
-              result.title = content;
-            }
-          }
-        }
-
-        // 尝试从页面数据中提取（如果页面有全局数据对象）
-        try {
-          const pageData = (window as any).__INITIAL_STATE__ || (window as any).__NUXT__;
-          if (pageData) {
-            if (!result.anchorName) {
-              const anchor =
-                pageData?.data?.user?.nickname ||
-                pageData?.anchor?.nickname ||
-                pageData?.userInfo?.nickname;
-              if (anchor) result.anchorName = anchor;
-            }
-            if (!result.title) {
-              const title =
-                pageData?.data?.room?.title ||
-                pageData?.room?.title ||
-                pageData?.roomInfo?.title;
-              if (title) result.title = title;
-            }
-          }
-        } catch {
-          // 忽略错误
-        }
-
-        return result;
-      });
-
-      return metadata;
-    } catch (error: any) {
-      console.log(`[Browser] Failed to extract page metadata: ${error.message}`);
-      return { anchorName: '', title: '' };
-    }
+    return await extractMetadata(this.page);
   }
 
   /**
