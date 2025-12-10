@@ -1,9 +1,3 @@
----
-noteId: "ebd2c1f0d58511f0bf70918e0fb39307"
-tags: []
-
----
-
 # 故障排除
 
 ## npm start 参数问题
