@@ -20,8 +20,7 @@ export interface RecordingMetadata {
     endTime?: string;
     duration?: number;
     format: string;
-    audioOnly: boolean;
-    videoOnly: boolean;
+
     segmentEnabled: boolean;
   };
   file: {
@@ -75,11 +74,13 @@ export function getMetadataPath(videoPath: string): string {
  */
 export async function writeRecordingMetadata(
   videoPath: string,
-  metadata: Omit<RecordingMetadata, 'file' | 'type' | 'version'> & { file: Partial<RecordingMetadata['file']> }
+  metadata: Omit<RecordingMetadata, 'file' | 'type' | 'version'> & {
+    file: Partial<RecordingMetadata['file']>;
+  }
 ): Promise<void> {
   try {
     const filename = path.basename(videoPath);
-    
+
     // Get file size if file exists
     let fileSize: number | undefined;
     try {
@@ -114,11 +115,13 @@ export async function writeRecordingMetadata(
  */
 export async function writeDownloadMetadata(
   videoPath: string,
-  metadata: Omit<DownloadMetadata, 'file' | 'type' | 'version'> & { file: Partial<DownloadMetadata['file']> }
+  metadata: Omit<DownloadMetadata, 'file' | 'type' | 'version'> & {
+    file: Partial<DownloadMetadata['file']>;
+  }
 ): Promise<void> {
   try {
     const filename = path.basename(videoPath);
-    
+
     // Get file size if file exists
     let fileSize: number | undefined;
     try {
@@ -152,4 +155,3 @@ export async function writeDownloadMetadata(
     // Don't throw - metadata is optional
   }
 }
-

@@ -56,9 +56,6 @@ node dist/cli.js record 379595210124 -o ./videos
 # 指定画质
 node dist/cli.js record 379595210124 -q hd
 
-# 仅录制音频
-node dist/cli.js record 379595210124 --audio-only
-
 # 使用 TS 格式（边录边播，中断安全）
 node dist/cli.js record 379595210124 --format ts
 ```

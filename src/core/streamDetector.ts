@@ -54,7 +54,9 @@ export class StreamDetector {
    */
   async detectStream(roomIdOrUrl: string): Promise<DetectedStreamInfo> {
     const roomId = extractRoomId(roomIdOrUrl);
-    Logger.verbose(chalk.cyan(`[Stream Detector] 开始检测流，房间 ID: ${roomId}, 模式: ${this.mode}`));
+    Logger.verbose(
+      chalk.cyan(`[Stream Detector] 开始检测流，房间 ID: ${roomId}, 模式: ${this.mode}`)
+    );
 
     if (this.mode === 'browser') {
       Logger.verbose(chalk.blue('[Stream Detector] 使用浏览器模式...'));
@@ -178,7 +180,9 @@ export class StreamDetector {
       this.browserController = new BrowserController({
         headless: true,
         onStreamDetected: (type: string, url: string) => {
-          Logger.verbose(chalk.gray(`[Browser Mode] 检测到流 (${type}): ${url.substring(0, 100)}...`));
+          Logger.verbose(
+            chalk.gray(`[Browser Mode] 检测到流 (${type}): ${url.substring(0, 100)}...`)
+          );
         },
       });
       await this.browserController.launch();
@@ -283,9 +287,7 @@ export class StreamDetector {
       Logger.verbose(chalk.green(`[Stream Detector] Stream URL is reachable (Status: ${status})`));
       return;
     }
-    Logger.warn(
-      chalk.yellow(`[Stream Detector] Stream URL validation failed (Status: ${status})`)
-    );
+    Logger.warn(chalk.yellow(`[Stream Detector] Stream URL validation failed (Status: ${status})`));
     throw new StreamValidationError(`Stream URL is unreachable`, status);
   }
 }

@@ -1,5 +1,5 @@
 import { FfmpegCommand } from 'fluent-ffmpeg';
-import { ensureDir } from '../utils.js';
+import { ensureDir } from '../utils/index.js';
 
 export interface BaseRecorderOptions {
   outputDir?: string;
@@ -24,8 +24,6 @@ export interface ProgressInfo {
 export type OutputFormat = 'mp4' | 'ts' | 'fmp4';
 
 export interface RecordingOptions {
-  videoOnly?: boolean;
-  audioOnly?: boolean;
   duration?: number | null;
   format?: OutputFormat;
   cookies?: string;

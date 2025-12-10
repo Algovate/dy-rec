@@ -51,7 +51,6 @@ export async function recordWithConfig(options: ConfigOptions): Promise<void> {
   for (const room of rooms) {
     await taskManager.addTask(room.url, config, {
       duration: null,
-      audioOnly: false,
     });
   }
 
@@ -123,25 +122,25 @@ export async function recordWithConfig(options: ConfigOptions): Promise<void> {
         const fileSize = getFileSize(outputDir, status.roomId);
         const duration = formatDuration(status.elapsed);
         const sizeStr = fileSize > 0 ? formatFileSize(fileSize) : '--';
-        
+
         // Build status line
         let statusLine = `  - ${chalk.yellow(status.roomId)}: ${chalk.green(status.status)}`;
-        
+
         // Add anchor name if available
         if (status.streamInfo?.anchorName) {
           statusLine += ` | ${chalk.cyan(status.streamInfo.anchorName)}`;
         }
-        
+
         // Add duration and size
         statusLine += ` | ${chalk.blue(`Duration: ${duration}`)} | ${chalk.magenta(`Size: ${sizeStr}`)}`;
-        
+
         // Add recorder duration if available
         if (status.recorderStatus?.duration && status.recorderStatus.duration !== '00:00:00') {
           statusLine += ` | ${chalk.gray(`FFmpeg: ${status.recorderStatus.duration}`)}`;
         }
-        
+
         console.log(statusLine);
-        
+
         // Show error if any
         if (status.error) {
           console.log(chalk.red(`    Error: ${status.error}`));
@@ -204,7 +203,6 @@ export async function watchRooms(options: WatchOptions): Promise<void> {
       if (room && !taskManager.hasTask(roomId)) {
         await taskManager.addTask(room.url, config, {
           duration: null,
-          audioOnly: false,
         });
       }
     },

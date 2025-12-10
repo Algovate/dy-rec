@@ -16,8 +16,6 @@ type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 
 interface TaskOptions {
   duration?: number | null;
-  audioOnly?: boolean;
-  videoOnly?: boolean;
 }
 
 interface TaskStatusInfo {
@@ -145,8 +143,7 @@ class RecordingTask {
               endTime: recordingEndTime,
               duration: recordingDuration,
               format: this.config.output?.format || 'mp4',
-              audioOnly: this.options.audioOnly || false,
-              videoOnly: this.options.videoOnly || false,
+
               segmentEnabled: this.config.output?.segmentEnabled || false,
             },
             file: {},
@@ -210,8 +207,7 @@ class RecordingTask {
   private getRecordingOptions(): any {
     return {
       duration: this.options.duration || null,
-      audioOnly: this.options.audioOnly || false,
-      videoOnly: this.options.videoOnly || false,
+
       format: this.config.output?.format || 'mp4',
     };
   }

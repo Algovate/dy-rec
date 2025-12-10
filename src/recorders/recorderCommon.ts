@@ -81,31 +81,13 @@ export function getHlsInputOptions(cookies?: string): string[] {
  */
 export function configureCodecs(
   command: FfmpegCommand,
-  options: RecordingOptions,
+  _options: RecordingOptions,
   isHls: boolean = false
 ): FfmpegCommand {
-  if (options.audioOnly) {
-    if (isHls) {
-      return command
-        .noVideo()
-        .audioCodec('aac')
-        .audioBitrate('128k')
-        .audioFrequency(44100)
-        .audioChannels(2);
-    } else {
-      return command.noVideo().audioCodec('copy').outputOptions(['-bsf:a', 'aac_adtstoasc']);
-    }
-  } else if (options.videoOnly) {
-    return command.noAudio().videoCodec('copy');
+  if (isHls) {
+    return command.videoCodec('copy').audioCodec('copy').outputOptions(['-bsf:a', 'aac_adtstoasc']);
   } else {
-    if (isHls) {
-      return command
-        .videoCodec('copy')
-        .audioCodec('copy')
-        .outputOptions(['-bsf:a', 'aac_adtstoasc']);
-    } else {
-      return command.videoCodec('copy').audioCodec('copy');
-    }
+    return command.videoCodec('copy').audioCodec('copy');
   }
 }
 
@@ -116,7 +98,7 @@ export function configureOutputFormat(
   command: FfmpegCommand,
   outputFilename: string,
   format: OutputFormat,
-  options: RecordingOptions
+  _options: RecordingOptions
 ): FfmpegCommand {
   const ext = path.extname(outputFilename).toLowerCase();
 
@@ -126,12 +108,6 @@ export function configureOutputFormat(
     return command
       .outputOptions(['-movflags', '+frag_keyframe+empty_moov+default_base_moof'])
       .format('mp4');
-  } else if (options.audioOnly) {
-    if (ext === '.m4a') {
-      return command.format('ipod');
-    } else if (ext === '.mp3') {
-      return command.audioCodec('libmp3lame').audioBitrate('192k').format('mp3');
-    }
   }
 
   // Default MP4 format

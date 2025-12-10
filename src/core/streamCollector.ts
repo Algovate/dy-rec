@@ -3,7 +3,11 @@
  * Manages collection and organization of detected stream URLs
  */
 
-import { detectStreamType, detectStreamTypeFromContentType, matchesStreamPattern } from '../utils/urlFilter.js';
+import {
+  detectStreamType,
+  detectStreamTypeFromContentType,
+  matchesStreamPattern,
+} from '../utils/urlFilter.js';
 
 export type StreamType = 'flv' | 'hls' | 'dash' | 'other';
 
@@ -32,7 +36,7 @@ export class StreamCollector {
    */
   addFromRequest(url: string, resourceType?: string): void {
     const streamType = detectStreamType(url);
-    
+
     if (!streamType) {
       // Check if it matches stream patterns but exclude non-stream URLs
       if (matchesStreamPattern(url) && resourceType === 'media') {
@@ -191,4 +195,3 @@ export class StreamCollector {
     this.dashUrls.clear();
   }
 }
-

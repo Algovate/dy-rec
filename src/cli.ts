@@ -46,8 +46,7 @@ program
   .option('-m, --mode <mode>', 'Detection mode: api, browser, or hybrid', DEFAULT_DETECTION_MODE)
   .option('-q, --quality <quality>', 'Video quality: origin, uhd, hd, sd, ld', DEFAULT_QUALITY)
   .option('--format <format>', 'Output format: mp4, ts, fmp4', DEFAULT_FORMAT)
-  .option('--video-only', 'Record video only')
-  .option('--audio-only', 'Record audio only')
+
   .option('-d, --duration <seconds>', 'Recording duration in seconds', parseInt)
   .option('--segment', 'Enable segment recording')
   .option('--segment-duration <seconds>', 'Segment duration in seconds', parseInt)

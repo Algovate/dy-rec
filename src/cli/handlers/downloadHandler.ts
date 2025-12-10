@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import path from 'node:path';
 import { VideoDownloader } from '../../download/videoDownloader.js';
-import { getTimestamp } from '../../utils.js';
+import { getTimestamp } from '../../utils/index.js';
 import { DEFAULT_RECORDINGS_DIR, DEFAULT_DOWNLOAD_TIMEOUT } from '../../constants.js';
 import { Logger } from '../../utils/logger.js';
 import { writeDownloadMetadata } from '../../utils/metadataWriter.js';

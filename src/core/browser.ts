@@ -83,7 +83,7 @@ export class BrowserController {
     this.page.on('request', (request) => {
       const url = request.url();
       this.requestUrls.add(url);
-      
+
       // Use stream collector to handle stream detection
       const resourceType = request.resourceType();
       this.streamCollector.addFromRequest(url, resourceType);
@@ -421,7 +421,7 @@ export class BrowserController {
           const patterns = ['/api/', '/webcast/', '/aweme/', '/solution/', 'config', 'setting'];
           return patterns.some((p) => url.includes(p));
         };
-        
+
         const matchesStreamPattern = (url: string) => {
           if (isNonStreamUrl(url)) return false;
           return (

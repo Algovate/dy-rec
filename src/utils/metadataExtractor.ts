@@ -33,7 +33,6 @@ const TITLE_SELECTORS = [
   '.subtitle',
 ] as const;
 
-
 /**
  * Extract metadata from DOM and page data
  * This function is injected into the browser page context
@@ -125,7 +124,9 @@ export function extractMetadataScript(): string {
 /**
  * Extract metadata using browser evaluation
  */
-export async function extractMetadata(page: { evaluate: (fn: any, ...args: any[]) => Promise<PageMetadata> }): Promise<PageMetadata> {
+export async function extractMetadata(page: {
+  evaluate: (fn: any, ...args: any[]) => Promise<PageMetadata>;
+}): Promise<PageMetadata> {
   try {
     const metadata = await page.evaluate(
       (args: { anchorSelectors: string[]; titleSelectors: string[] }) => {
@@ -195,9 +196,7 @@ export async function extractMetadata(page: { evaluate: (fn: any, ...args: any[]
             }
             if (!result.title) {
               const title =
-                pageData?.data?.room?.title ||
-                pageData?.room?.title ||
-                pageData?.roomInfo?.title;
+                pageData?.data?.room?.title || pageData?.room?.title || pageData?.roomInfo?.title;
               if (title) result.title = title;
             }
           }
@@ -216,4 +215,3 @@ export async function extractMetadata(page: { evaluate: (fn: any, ...args: any[]
     return { anchorName: '', title: '' };
   }
 }
-

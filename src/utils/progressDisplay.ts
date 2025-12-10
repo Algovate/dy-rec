@@ -45,7 +45,7 @@ export class ProgressDisplay {
    */
   update(progress: ProgressInfo): void {
     const now = Date.now();
-    
+
     // Throttle updates to avoid terminal spam
     if (now - this.lastUpdateTime < this.updateInterval) {
       return;
@@ -74,9 +74,7 @@ export class ProgressDisplay {
     const elapsed = this.formatSeconds(progress.elapsedSeconds || 0);
     const size = this.formatFileSize(progress.fileSize || 0);
     const fps = progress.currentFps ? progress.currentFps.toFixed(1) : '--';
-    const bitrate = progress.currentKbps
-      ? `${Math.round(progress.currentKbps)} kb/s`
-      : '--';
+    const bitrate = progress.currentKbps ? `${Math.round(progress.currentKbps)} kb/s` : '--';
 
     // Text-only mode: show real-time information
     const line =
@@ -189,4 +187,3 @@ export class ProgressDisplay {
     };
   }
 }
-

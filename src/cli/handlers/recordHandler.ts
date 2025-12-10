@@ -7,7 +7,7 @@ import { FlvRecorder } from '../../recorders/flvRecorder.js';
 import { M3u8Recorder } from '../../recorders/m3u8Recorder.js';
 import { SegmentRecorder } from '../../recorders/segmentRecorder.js';
 import { VideoQuality } from '../../api/douyinApi.js';
-import { getTimestamp } from '../../utils.js';
+import { getTimestamp } from '../../utils/index.js';
 import { OutputFormat } from '../../recorders/flvRecorder.js';
 import { getStreamType } from '../../utils/streamUrl.js';
 import { ProgressDisplay } from '../../utils/progressDisplay.js';
@@ -26,8 +26,7 @@ export interface RecordOptions {
   mode?: string;
   quality?: string;
   format?: string;
-  videoOnly?: boolean;
-  audioOnly?: boolean;
+
   duration?: number;
   segment?: boolean;
   segmentDuration?: number;
@@ -45,8 +44,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     mode = DEFAULT_DETECTION_MODE,
     quality = DEFAULT_QUALITY,
     format = DEFAULT_FORMAT,
-    videoOnly,
-    audioOnly,
+
     duration,
     segment,
     segmentDuration,
@@ -94,8 +92,6 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   let fileExt: string;
   if (outputFormat === 'ts') {
     fileExt = 'ts';
-  } else if (audioOnly) {
-    fileExt = 'm4a';
   } else {
     fileExt = 'mp4'; // mp4 and fmp4 both use .mp4 extension
   }
@@ -103,7 +99,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
 
   // Create output path for progress display
   const outputPath = path.join(output, filename);
-  
+
   // Create progress display (only for non-segment recorders)
   let progressDisplay: ProgressDisplay | null = null;
   if (!segment) {
@@ -152,7 +148,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
 
   // Start recording
   const recordingStartTime = new Date().toISOString();
-  
+
   // Handle interrupt
   const handleInterrupt = async () => {
     if (progressDisplay) {
@@ -160,7 +156,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     }
     Logger.warn('\n\n[Interrupt] Stopping recording...');
     await recorder.stop();
-    
+
     let actualOutputPath: string;
     if (recorder instanceof SegmentRecorder) {
       actualOutputPath = outputPath;
@@ -168,7 +164,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
       const outputDir = output;
       actualOutputPath = path.join(outputDir, filename);
     }
-    
+
     // Write metadata even when interrupted
     if (!segment && fs.existsSync(actualOutputPath)) {
       try {
@@ -207,8 +203,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
             endTime: recordingEndTime,
             duration: recordingDuration,
             format: outputFormat,
-            audioOnly: audioOnly || false,
-            videoOnly: videoOnly || false,
+
             segmentEnabled: false,
           },
           file: {
@@ -219,7 +214,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
         Logger.verbose(`[Record Handler] Failed to write metadata: ${error.message}`);
       }
     }
-    
+
     if (progressDisplay) {
       const stats = progressDisplay.getFinalStats();
       Logger.info(`  Duration: ${stats.duration}`);
@@ -237,23 +232,23 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
 
   try {
     let actualOutputPath: string;
-    
+
     if (recorder instanceof SegmentRecorder) {
       await recorder.record(streamInfo.recordUrl, filename.replace(/\.\w+$/, ''), {
-        videoOnly,
-        audioOnly,
         cookies,
       });
       // For segment recorder, outputPath is the directory
       actualOutputPath = outputPath;
     } else {
-      actualOutputPath = await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
-        videoOnly,
-        audioOnly,
-        duration,
-        format: outputFormat,
-        cookies,
-      });
+      actualOutputPath = await (recorder as FlvRecorder | M3u8Recorder).record(
+        streamInfo.recordUrl,
+        filename,
+        {
+          duration,
+          format: outputFormat,
+          cookies,
+        }
+      );
     }
 
     const recordingEndTime = new Date().toISOString();
@@ -317,8 +312,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
             endTime: recordingEndTime,
             duration: recordingDuration,
             format: outputFormat,
-            audioOnly: audioOnly || false,
-            videoOnly: videoOnly || false,
+
             segmentEnabled: false,
           },
           file: {

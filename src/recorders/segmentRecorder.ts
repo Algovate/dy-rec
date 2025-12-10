@@ -19,8 +19,7 @@ export interface SegmentProgressInfo {
 export interface SegmentRecordingOptions {
   segmentDuration?: number;
   segmentFormat?: string;
-  videoOnly?: boolean;
-  audioOnly?: boolean;
+
   cookies?: string;
 }
 
@@ -60,12 +59,7 @@ export class SegmentRecorder extends BaseRecorder {
     baseFilename: string,
     options: SegmentRecordingOptions = {}
   ): Promise<void> {
-    const {
-      segmentDuration = this.segmentDuration,
-      segmentFormat = this.segmentFormat,
-      videoOnly = false,
-      audioOnly = false,
-    } = options;
+    const { segmentDuration = this.segmentDuration, segmentFormat = this.segmentFormat } = options;
 
     // 生成分段文件名模板
     const segmentPattern = path.join(this.outputDir, `${baseFilename}_%03d.${segmentFormat}`);
@@ -127,13 +121,7 @@ export class SegmentRecorder extends BaseRecorder {
         });
 
       // 配置输出选项
-      if (audioOnly) {
-        command = command.noVideo().audioCodec('aac').audioBitrate('128k');
-      } else if (videoOnly) {
-        command = command.noAudio().videoCodec('copy');
-      } else {
-        command = command.videoCodec('copy').audioCodec('aac').audioBitrate('128k');
-      }
+      command = command.videoCodec('copy').audioCodec('aac').audioBitrate('128k');
 
       // 监听分段创建（通过 stderr 输出检测）
       command.on('stderr', (stderrLine: string) => {

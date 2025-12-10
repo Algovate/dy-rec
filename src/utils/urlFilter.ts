@@ -42,7 +42,7 @@ export function isNonStreamUrl(url: string): boolean {
  */
 export function detectStreamType(url: string): StreamType | null {
   const urlLower = url.toLowerCase();
-  
+
   if (urlLower.includes('.flv')) {
     return 'flv';
   }
@@ -52,7 +52,7 @@ export function detectStreamType(url: string): StreamType | null {
   if (urlLower.includes('.mpd')) {
     return 'dash';
   }
-  
+
   // Check for stream-like patterns but exclude non-stream URLs
   if ((url.includes('pull') || url.includes('stream')) && !isNonStreamUrl(url)) {
     // Must have file extension or be a media resource
@@ -60,7 +60,7 @@ export function detectStreamType(url: string): StreamType | null {
       return urlLower.includes('.flv') ? 'flv' : urlLower.includes('.m3u8') ? 'hls' : 'dash';
     }
   }
-  
+
   return null;
 }
 
@@ -79,7 +79,7 @@ export function matchesStreamPattern(url: string): boolean {
   if (isNonStreamUrl(url)) {
     return false;
   }
-  
+
   return (
     url.includes('.flv') ||
     url.includes('.m3u8') ||
@@ -94,7 +94,7 @@ export function matchesStreamPattern(url: string): boolean {
  */
 export function detectStreamTypeFromContentType(contentType: string): StreamType | null {
   const ct = contentType.toLowerCase();
-  
+
   if (ct.includes('video/x-flv') || ct.includes('application/x-flv')) {
     return 'flv';
   }
@@ -104,7 +104,6 @@ export function detectStreamTypeFromContentType(contentType: string): StreamType
   if (ct.includes('application/dash+xml')) {
     return 'dash';
   }
-  
+
   return null;
 }
-

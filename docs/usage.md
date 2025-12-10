@@ -35,8 +35,6 @@ node dist/cli.js <roomId> [options]
 | `-m, --mode <mode>` | 检测模式: `api`, `browser`, `hybrid` | `hybrid` |
 | `-q, --quality <quality>` | 画质: `origin`, `uhd`, `hd`, `sd`, `ld` | `origin` |
 | `--format <format>` | 输出格式: `mp4`, `ts`, `fmp4` | `fmp4` |
-| `--video-only` | 仅录制视频 | - |
-| `--audio-only` | 仅录制音频 | - |
 | `-d, --duration <seconds>` | 录制时长（秒），不指定则持续录制 | - |
 | `--segment` | 启用分段录制 | - |
 | `--segment-duration <sec>` | 分段时长（秒） | - |
@@ -111,12 +109,6 @@ node dist/cli.js download <url> [options]
 
 ```bash
 node dist/cli.js 379595210124 -o ./videos
-```
-
-### 仅录制音频
-
-```bash
-node dist/cli.js 379595210124 --audio-only
 ```
 
 ### 使用 TS 格式（边录边播，中断安全）

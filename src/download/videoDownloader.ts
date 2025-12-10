@@ -2,7 +2,7 @@ import puppeteer, { Browser, Page, PuppeteerLaunchOptions } from 'puppeteer';
 import axios from 'axios';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensureDir } from '../utils.js';
+import { ensureDir } from '../utils/index.js';
 import { DEFAULT_BROWSER_USER_AGENT, DEFAULT_DOWNLOAD_TIMEOUT } from '../constants.js';
 import { Logger } from '../utils/logger.js';
 
@@ -66,7 +66,7 @@ export class VideoDownloader {
    */
   async download(url: string, outputPath: string): Promise<DownloadResult> {
     let videoId = 'unknown';
-    let sourceUrl = url;
+    const sourceUrl = url;
     let finalUrl = '';
     let videoUrl = '';
     let metadata: VideoMetadata | undefined;
@@ -287,7 +287,7 @@ export class VideoDownloader {
                 }
               }
             }
-          } catch (e) {
+          } catch {
             // Ignore
           }
         }
@@ -307,7 +307,7 @@ export class VideoDownloader {
                   result.publishTimestamp = date.getTime();
                   result.publishTimeISO = date.toISOString();
                 }
-              } catch (e) {
+              } catch {
                 // Ignore
               }
             }
@@ -404,12 +404,12 @@ export class VideoDownloader {
       });
 
       writer.on('error', (err: any) => {
-        fs.unlink(outputPath, () => { }); // 删除不完整的文件
+        fs.unlink(outputPath, () => {}); // 删除不完整的文件
         reject(new Error(`文件写入失败: ${err.message}`));
       });
 
       response.data.on('error', (err: Error) => {
-        fs.unlink(outputPath, () => { });
+        fs.unlink(outputPath, () => {});
         reject(new Error(`下载流错误: ${err.message}`));
       });
     });
