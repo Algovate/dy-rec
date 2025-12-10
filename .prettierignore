@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+*.mp4
+*.m4a
+*.mp3
+*.m3u8
+output/
+downloads/
+package-lock.json
+

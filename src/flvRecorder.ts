@@ -1,0 +1,217 @@
+import ffmpeg from 'fluent-ffmpeg';
+import { FfmpegCommand } from 'fluent-ffmpeg';
+import * as path from 'path';
+import { ensureDir } from './utils.js';
+
+export interface FlvRecorderOptions {
+  outputDir?: string;
+  onProgress?: (progress: ProgressInfo) => void;
+}
+
+export interface ProgressInfo {
+  duration: string;
+  time?: string;
+  currentFps?: number;
+  currentKbps?: number;
+}
+
+export type OutputFormat = 'mp4' | 'ts' | 'fmp4';
+
+export interface RecordingOptions {
+  videoOnly?: boolean;
+  audioOnly?: boolean;
+  duration?: number | null; // 录制时长（秒），null 表示持续录制直到手动停止
+  format?: OutputFormat; // 输出格式：mp4（默认）、ts（边录边播）、fmp4（fragmented mp4）
+}
+
+export interface RecordingStatus {
+  isRecording: boolean;
+  duration: string;
+  startTime: number | null;
+  elapsed: number;
+}
+
+/**
+ * FLV 录制模块
+ * 使用 ffmpeg 直接录制 FLV 流
+ */
+export class FlvRecorder {
+  private outputDir: string;
+  private onProgress?: (progress: ProgressInfo) => void;
+  private ffmpegProcess: FfmpegCommand | null = null;
+  private isRecording: boolean = false;
+  private duration: string = '00:00:00';
+  private startTime: number | null = null;
+
+  constructor(options: FlvRecorderOptions = {}) {
+    this.outputDir = options.outputDir || './output';
+    this.onProgress = options.onProgress || undefined;
+  }
+
+  /**
+   * 初始化输出目录
+   */
+  async init(): Promise<void> {
+    await ensureDir(this.outputDir);
+  }
+
+  /**
+   * 录制 FLV 流
+   * @param flvUrl - FLV 流的 URL
+   * @param outputFilename - 输出文件名
+   * @param options - 录制选项
+   * @returns 输出文件路径
+   */
+  async record(
+    flvUrl: string,
+    outputFilename: string,
+    options: RecordingOptions = {}
+  ): Promise<string> {
+    const {
+      videoOnly = false,
+      audioOnly = false,
+      duration = null, // 录制时长（秒），null 表示持续录制直到手动停止
+      format = 'mp4', // 输出格式
+    } = options;
+
+    const outputPath = path.join(this.outputDir, outputFilename);
+
+    return new Promise((resolve, reject) => {
+      this.isRecording = true;
+      this.startTime = Date.now();
+
+      console.log(`[FLV Recorder] Starting recording from: ${flvUrl}`);
+      console.log(`[FLV Recorder] Output file: ${outputPath}`);
+
+      // 创建 ffmpeg 命令
+      let command = ffmpeg(flvUrl)
+        .inputOptions([
+          '-re', // 以原始帧率读取输入
+          '-rw_timeout',
+          '10000000', // 10 秒读写超时
+          '-timeout',
+          '10000000', // 10 秒超时
+        ])
+        .on('start', (commandLine: string) => {
+          console.log('[FLV Recorder] FFmpeg command:', commandLine);
+        })
+        .on('progress', (progress: any) => {
+          this.duration = progress.timemark || '00:00:00';
+
+          if (this.onProgress) {
+            this.onProgress({
+              duration: this.duration,
+              time: progress.timemark,
+              currentFps: progress.currentFps,
+              currentKbps: progress.currentKbps,
+            });
+          }
+
+          // 如果设置了录制时长，检查是否达到
+          if (duration && progress.timemark) {
+            const elapsed = this.parseTimemark(progress.timemark);
+            if (elapsed >= duration) {
+              console.log(`[FLV Recorder] Reached target duration: ${duration}s`);
+              command.kill('SIGINT'); // 优雅停止
+            }
+          }
+        })
+        .on('end', () => {
+          this.isRecording = false;
+          console.log('[FLV Recorder] Recording completed');
+          resolve(outputPath);
+        })
+        .on('error', (err: Error, _stdout: string, stderr: string) => {
+          this.isRecording = false;
+          console.error('[FLV Recorder] Error:', err.message);
+          if (stderr) {
+            console.error('[FLV Recorder] FFmpeg stderr:', stderr);
+          }
+          reject(err);
+        });
+
+      // 配置输出选项
+      if (audioOnly) {
+        // 仅录制音频
+        command = command.noVideo().audioCodec('copy'); // 尝试直接复制音频流
+      } else if (videoOnly) {
+        // 仅录制视频
+        command = command.noAudio().videoCodec('copy'); // 直接复制视频流，不重新编码
+      } else {
+        // 录制视频和音频
+        command = command
+          .videoCodec('copy') // 直接复制视频流
+          .audioCodec('copy'); // 直接复制音频流
+      }
+
+      // 设置输出格式
+      const ext = path.extname(outputFilename).toLowerCase();
+      if (audioOnly && ext === '.m4a') {
+        command = command.format('ipod');
+      } else if (audioOnly && ext === '.mp3') {
+        command = command.audioCodec('libmp3lame').audioBitrate('192k').format('mp3');
+      } else if (format === 'ts' || ext === '.ts') {
+        // TS 格式：支持边录边播，中断安全
+        command = command.format('mpegts');
+        console.log('[FLV Recorder] Using TS format (streamable, interrupt-safe)');
+      } else if (format === 'fmp4') {
+        // Fragmented MP4：支持边录边播，兼容性好
+        command = command
+          .outputOptions(['-movflags', '+frag_keyframe+empty_moov+default_base_moof'])
+          .format('mp4');
+        console.log('[FLV Recorder] Using Fragmented MP4 format (streamable)');
+      } else {
+        // 默认 MP4 格式
+        command = command
+          .outputOptions([
+            '-movflags',
+            '+faststart', // 优化 MP4 以便快速播放
+          ])
+          .format('mp4');
+      }
+
+      // 开始录制
+      command.output(outputPath).run();
+
+      // 保存 ffmpeg 进程引用
+      this.ffmpegProcess = command;
+    });
+  }
+
+  /**
+   * 停止录制
+   */
+  async stop(): Promise<void> {
+    if (this.ffmpegProcess && this.isRecording) {
+      console.log('[FLV Recorder] Stopping recording...');
+      this.ffmpegProcess.kill('SIGINT'); // 发送中断信号以优雅停止
+      this.isRecording = false;
+    }
+  }
+
+  /**
+   * 获取当前录制状态
+   */
+  getStatus(): RecordingStatus {
+    return {
+      isRecording: this.isRecording,
+      duration: this.duration,
+      startTime: this.startTime,
+      elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
+    };
+  }
+
+  /**
+   * 解析时间标记为秒数
+   */
+  private parseTimemark(timemark: string): number {
+    const parts = timemark.split(':');
+    if (parts.length === 3) {
+      const hours = parseFloat(parts[0]);
+      const minutes = parseFloat(parts[1]);
+      const seconds = parseFloat(parts[2]);
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+    return 0;
+  }
+}

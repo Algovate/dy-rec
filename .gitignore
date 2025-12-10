@@ -1,0 +1,17 @@
+node_modules/
+output/
+downloads/
+dist/
+*.log
+*.js.map
+*.d.ts.map
+.DS_Store
+*.mp4
+*.m4a
+*.mp3
+# TypeScript source files are tracked, but compiled JS files are not
+# *.ts
+*.m3u8
+temp/
+.cache/
+

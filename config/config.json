@@ -1,0 +1,35 @@
+{
+  "mode": "hybrid",
+  "output": {
+    "dir": "./downloads",
+    "format": "mp4",
+    "segmentDuration": 3600,
+    "segmentEnabled": false
+  },
+  "recording": {
+    "quality": "origin",
+    "reconnect": true,
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "watch": {
+    "enabled": false,
+    "interval": 60,
+    "autoStart": true
+  },
+  "rooms": [
+    {
+      "url": "https://live.douyin.com/379595210124",
+      "quality": "origin",
+      "enabled": true
+    }
+  ],
+  "api": {
+    "cookies": "",
+    "proxy": null
+  },
+  "browser": {
+    "headless": true
+  }
+}
+
