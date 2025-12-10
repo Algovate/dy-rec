@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
 import { BaseRecorder, BaseRecorderOptions } from './baseRecorder.js';
+import { getStreamInputOptions } from './recorderCommon.js';
 
 export interface SegmentRecorderOptions extends BaseRecorderOptions {
   segmentDuration?: number;
@@ -20,6 +21,7 @@ export interface SegmentRecordingOptions {
   segmentFormat?: string;
   videoOnly?: boolean;
   audioOnly?: boolean;
+  cookies?: string;
 }
 
 export interface SegmentStatus {
@@ -79,7 +81,7 @@ export class SegmentRecorder extends BaseRecorder {
 
       // 创建 ffmpeg 命令
       let command = ffmpeg(streamUrl)
-        .inputOptions(['-re', '-rw_timeout', '10000000', '-timeout', '10000000'])
+        .inputOptions(getStreamInputOptions(options.cookies))
         .outputOptions([
           '-f',
           'segment',

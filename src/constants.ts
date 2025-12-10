@@ -2,8 +2,8 @@
  * Application constants
  */
 
-export const DEFAULT_OUTPUT_DIR = './downloads';
-export const DEFAULT_RECORDINGS_DIR = './recordings';
+export const DEFAULT_OUTPUT_DIR = './output/downloads';
+export const DEFAULT_RECORDINGS_DIR = './output/recordings';
 export const DEFAULT_CONFIG_PATH = 'config/config.json';
 
 export const DEFAULT_DETECTION_MODE = 'hybrid';

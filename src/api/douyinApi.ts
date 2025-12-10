@@ -7,6 +7,8 @@ import {
   ROOM_STATUS_LIVE,
 } from '../constants.js';
 import { extractRoomId } from '../utils/roomId.js';
+import { toHttps } from '../utils/streamUrl.js';
+
 
 export interface DouyinApiOptions {
   cookies?: string;
@@ -209,6 +211,11 @@ export class DouyinApi {
       }
     }
 
+    // Convert HTTP to HTTPS (CDN blocks plain HTTP connections)
+    if (flvUrl) flvUrl = toHttps(flvUrl);
+    if (hlsUrl) hlsUrl = toHttps(hlsUrl);
+
+
     if (!flvUrl && !hlsUrl) {
       throw new Error('无法获取有效的流地址');
     }
@@ -220,9 +227,10 @@ export class DouyinApi {
       quality: qualityKey,
       flvUrl,
       hlsUrl,
-      recordUrl: hlsUrl || flvUrl, // 优先使用 HLS
+      recordUrl: flvUrl || hlsUrl, // 优先使用 FLV (more compatible, HLS often fails)
       availableQualities: Object.keys(flvUrls),
     };
+
   }
 
   /**

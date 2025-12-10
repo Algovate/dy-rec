@@ -25,7 +25,7 @@ program
   .alias('r')
   .description('Record a single live room')
   .option('-r, --room <roomId>', 'Douyin live room ID or URL')
-  .option('-o, --output <dir>', 'Output directory', './downloads')
+  .option('-o, --output <dir>', 'Output directory', './output/recordings')
   .option('-m, --mode <mode>', 'Detection mode: api, browser, or hybrid', 'hybrid')
   .option('-q, --quality <quality>', 'Video quality: origin, uhd, hd, sd, ld', 'origin')
   .option('--format <format>', 'Output format: mp4, ts, fmp4 (default: fmp4)', 'fmp4')
@@ -83,7 +83,7 @@ program
   .description('Download a Douyin video (short video, not live)')
   .requiredOption('-u, --url <url>', 'Douyin video URL (short link or full URL)')
   .option('-o, --output <file>', 'Output filename')
-  .option('--outdir <dir>', 'Output directory', './recordings')
+  .option('--outdir <dir>', 'Output directory', './output/downloads')
   .option('--timeout <seconds>', 'Timeout in seconds', parseInt)
   .option('--headful', 'Show browser window (for debugging)')
   .action(async (options: DownloadOptions) => {

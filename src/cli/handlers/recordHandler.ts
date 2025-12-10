@@ -6,13 +6,15 @@ import { SegmentRecorder } from '../../recorders/segmentRecorder.js';
 import { VideoQuality } from '../../api/douyinApi.js';
 import { getTimestamp } from '../../utils.js';
 import { OutputFormat } from '../../recorders/flvRecorder.js';
+import { getStreamType } from '../../utils/streamUrl.js';
 import {
-  DEFAULT_OUTPUT_DIR,
+  DEFAULT_RECORDINGS_DIR,
   DEFAULT_DETECTION_MODE,
   DEFAULT_QUALITY,
   DEFAULT_FORMAT,
   VALID_OUTPUT_FORMATS,
 } from '../../constants.js';
+
 
 export interface RecordOptions {
   room?: string;
@@ -34,7 +36,8 @@ export interface RecordOptions {
 export async function recordSingleRoom(options: RecordOptions): Promise<void> {
   const {
     room,
-    output = DEFAULT_OUTPUT_DIR,
+    output = DEFAULT_RECORDINGS_DIR,
+
     mode = DEFAULT_DETECTION_MODE,
     quality = DEFAULT_QUALITY,
     format = DEFAULT_FORMAT,
@@ -86,11 +89,14 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
       outputDir: output,
       segmentDuration: segmentDuration || 3600,
     });
-  } else if (streamInfo.hlsUrl) {
+  } else if (getStreamType(streamInfo.recordUrl) === 'm3u8') {
+    // Use M3U8 Recorder for HLS streams
     recorder = new M3u8Recorder({ outputDir: output });
   } else {
+    // Use FLV Recorder for FLV streams (default for most Douyin streams)
     recorder = new FlvRecorder({ outputDir: output });
   }
+
 
   await recorder.init();
 
@@ -131,6 +137,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
     await recorder.record(streamInfo.recordUrl, filename.replace(/\.\w+$/, ''), {
       videoOnly,
       audioOnly,
+      cookies,
     });
   } else {
     await (recorder as FlvRecorder | M3u8Recorder).record(streamInfo.recordUrl, filename, {
@@ -138,6 +145,7 @@ export async function recordSingleRoom(options: RecordOptions): Promise<void> {
       audioOnly,
       duration,
       format: outputFormat,
+      cookies,
     });
   }
 

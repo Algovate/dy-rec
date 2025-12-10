@@ -17,23 +17,48 @@ export interface RecorderCallbacks {
 }
 
 /**
- * Common FFmpeg input options for stream recording
+ * Common HTTP headers for Douyin streams
  */
-export function getStreamInputOptions(): string[] {
-  return [
+export const DOUYIN_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+export const DOUYIN_REFERER = 'https://live.douyin.com/';
+
+/**
+ * Common FFmpeg input options for stream recording
+ * @param cookies - Optional cookies to include in headers
+ */
+export function getStreamInputOptions(cookies?: string): string[] {
+  const options = ['-user_agent', DOUYIN_USER_AGENT, '-referer', DOUYIN_REFERER];
+
+  if (cookies) {
+    options.push('-headers', `Cookie: ${cookies}\r\n`);
+  }
+
+  options.push(
     '-re', // Read input at native frame rate
     '-rw_timeout',
     FFMPEG_RW_TIMEOUT.toString(),
     '-timeout',
-    FFMPEG_TIMEOUT.toString(),
-  ];
+    FFMPEG_TIMEOUT.toString()
+  );
+
+  return options;
 }
 
 /**
  * Common FFmpeg input options for HLS/M3U8 streams
+ * @param cookies - Optional cookies to include in headers
  */
-export function getHlsInputOptions(): string[] {
-  return [
+export function getHlsInputOptions(cookies?: string): string[] {
+  const options = ['-user_agent', DOUYIN_USER_AGENT, '-referer', DOUYIN_REFERER];
+
+  if (cookies) {
+    options.push('-headers', `Cookie: ${cookies}\r\n`);
+  }
+
+  options.push(
+    '-protocol_whitelist',
+    'file,http,https,tcp,tls,crypto',
     '-reconnect',
     '1',
     '-reconnect_at_eof',
@@ -45,8 +70,10 @@ export function getHlsInputOptions(): string[] {
     '-timeout',
     FFMPEG_TIMEOUT.toString(),
     '-rw_timeout',
-    FFMPEG_RW_TIMEOUT.toString(),
-  ];
+    FFMPEG_RW_TIMEOUT.toString()
+  );
+
+  return options;
 }
 
 /**
@@ -74,8 +101,7 @@ export function configureCodecs(
     if (isHls) {
       return command
         .videoCodec('copy')
-        .audioCodec('aac')
-        .audioBitrate('128k')
+        .audioCodec('copy')
         .outputOptions(['-bsf:a', 'aac_adtstoasc']);
     } else {
       return command.videoCodec('copy').audioCodec('copy');

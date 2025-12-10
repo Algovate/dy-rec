@@ -34,6 +34,29 @@ export class ConfigurationError extends AppError {
   }
 }
 
+export class FfmpegError extends AppError {
+  constructor(
+    message: string,
+    public readonly exitCode: number,
+    public readonly stderr?: string,
+    cause?: unknown
+  ) {
+    super(message, 'FFMPEG_ERROR', cause);
+    this.name = 'FfmpegError';
+  }
+}
+
+export class StreamValidationError extends AppError {
+  constructor(
+    message: string,
+    public readonly status: number,
+    cause?: unknown
+  ) {
+    super(message, 'STREAM_VALIDATION_ERROR', cause);
+    this.name = 'StreamValidationError';
+  }
+}
+
 /**
  * Extract error message from unknown error
  */
@@ -46,3 +69,4 @@ export function getErrorMessage(error: unknown): string {
   }
   return String(error);
 }
+

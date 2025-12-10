@@ -1,5 +1,4 @@
 import { FfmpegCommand } from 'fluent-ffmpeg';
-
 import { ensureDir } from '../utils.js';
 
 export interface BaseRecorderOptions {
@@ -13,11 +12,33 @@ export interface RecordingStatus {
   elapsed: number;
 }
 
+export interface ProgressInfo {
+  duration: string;
+  time?: string;
+  currentFps?: number;
+  currentKbps?: number;
+}
+
+export type OutputFormat = 'mp4' | 'ts' | 'fmp4';
+
+export interface RecordingOptions {
+  videoOnly?: boolean;
+  audioOnly?: boolean;
+  duration?: number | null;
+  format?: OutputFormat;
+  cookies?: string;
+}
+
+/**
+ * Base recorder class
+ * Provides common functionality for all recorder types
+ */
 export abstract class BaseRecorder {
   protected outputDir: string;
   protected ffmpegProcess: FfmpegCommand | null = null;
   protected isRecording: boolean = false;
   protected startTime: number | null = null;
+  protected duration: string = '00:00:00';
 
   constructor(options: BaseRecorderOptions = {}) {
     this.outputDir = options.outputDir || './output';
@@ -47,6 +68,7 @@ export abstract class BaseRecorder {
   getStatus(): RecordingStatus {
     return {
       isRecording: this.isRecording,
+      duration: this.duration,
       startTime: this.startTime,
       elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
     };
