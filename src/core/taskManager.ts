@@ -1,11 +1,11 @@
 import pLimit from 'p-limit';
 import chalk from 'chalk';
 import { StreamDetector, DetectedStreamInfo } from './streamDetector.js';
-import { FlvRecorder } from './flvRecorder.js';
-import { M3u8Recorder } from './recorders/m3u8Recorder.js';
-import { SegmentRecorder } from './recorders/segmentRecorder.js';
-import { RecordingMonitor, AutoReconnectRecorder } from './monitor/recordingMonitor.js';
-import { AppConfig } from './config/configManager.js';
+import { FlvRecorder } from '../recorders/flvRecorder.js';
+import { M3u8Recorder } from '../recorders/m3u8Recorder.js';
+import { SegmentRecorder } from '../recorders/segmentRecorder.js';
+import { RecordingMonitor, AutoReconnectRecorder } from '../monitor/recordingMonitor.js';
+import { AppConfig } from '../config/configManager.js';
 
 type TaskStatus = 'pending' | 'running' | 'stopped' | 'error';
 

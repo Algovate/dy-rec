@@ -1,10 +1,8 @@
 import ffmpeg from 'fluent-ffmpeg';
-import { FfmpegCommand } from 'fluent-ffmpeg';
 import * as path from 'path';
-import { ensureDir } from '../utils.js';
+import { BaseRecorder, BaseRecorderOptions } from './baseRecorder.js';
 
-export interface SegmentRecorderOptions {
-  outputDir?: string;
+export interface SegmentRecorderOptions extends BaseRecorderOptions {
   segmentDuration?: number;
   segmentFormat?: string;
   onProgress?: (progress: SegmentProgressInfo) => void;
@@ -35,28 +33,17 @@ export interface SegmentStatus {
  * 分段录制器
  * 按时长或文件大小分割视频
  */
-export class SegmentRecorder {
-  private outputDir: string;
+export class SegmentRecorder extends BaseRecorder {
   private segmentDuration: number;
   private segmentFormat: string;
   private onProgress?: (progress: SegmentProgressInfo) => void;
-  private ffmpegProcess: FfmpegCommand | null = null;
-  private isRecording: boolean = false;
   private segmentCount: number = 0;
-  private startTime: number | null = null;
 
   constructor(options: SegmentRecorderOptions = {}) {
-    this.outputDir = options.outputDir || './output';
+    super(options);
     this.segmentDuration = options.segmentDuration || 3600; // 默认 1 小时
     this.segmentFormat = options.segmentFormat || 'mp4';
     this.onProgress = options.onProgress || undefined;
-  }
-
-  /**
-   * 初始化输出目录
-   */
-  async init(): Promise<void> {
-    await ensureDir(this.outputDir);
   }
 
   /**
@@ -108,16 +95,19 @@ export class SegmentRecorder {
         .on('start', (commandLine: string) => {
           console.log('[Segment Recorder] FFmpeg command:', commandLine);
         })
-        .on('progress', (progress: any) => {
-          if (this.onProgress) {
-            this.onProgress({
-              duration: progress.timemark,
-              currentFps: progress.currentFps,
-              currentKbps: progress.currentKbps,
-              segmentCount: this.segmentCount,
-            });
+        .on(
+          'progress',
+          (progress: { timemark: string; currentFps?: number; currentKbps?: number }) => {
+            if (this.onProgress) {
+              this.onProgress({
+                duration: progress.timemark,
+                currentFps: progress.currentFps,
+                currentKbps: progress.currentKbps,
+                segmentCount: this.segmentCount,
+              });
+            }
           }
-        })
+        )
         .on('end', () => {
           this.isRecording = false;
           console.log(
@@ -161,25 +151,12 @@ export class SegmentRecorder {
   }
 
   /**
-   * 停止录制
-   */
-  async stop(): Promise<void> {
-    if (this.ffmpegProcess && this.isRecording) {
-      console.log('[Segment Recorder] Stopping recording...');
-      this.ffmpegProcess.kill('SIGINT');
-      this.isRecording = false;
-    }
-  }
-
-  /**
    * 获取状态
    */
-  getStatus(): SegmentStatus {
+  override getStatus(): SegmentStatus {
     return {
-      isRecording: this.isRecording,
+      ...super.getStatus(),
       segmentCount: this.segmentCount,
-      startTime: this.startTime,
-      elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
     };
   }
 }

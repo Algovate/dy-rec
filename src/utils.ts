@@ -7,8 +7,8 @@ import path from 'node:path';
 export async function ensureDir(dirPath: string): Promise<void> {
   try {
     await fs.mkdir(dirPath, { recursive: true });
-  } catch (error: any) {
-    if (error.code !== 'EEXIST') {
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw error;
     }
   }
@@ -27,9 +27,9 @@ export async function cleanupTempFiles(dirPath: string): Promise<void> {
         await fs.unlink(filePath);
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 忽略清理错误
-    console.warn('Warning: Failed to cleanup temp files:', error.message);
+    console.warn('Warning: Failed to cleanup temp files:', (error as Error).message);
   }
 }
 

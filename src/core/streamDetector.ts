@@ -1,4 +1,4 @@
-import { DouyinApi, DouyinApiOptions, VideoQuality } from './api/douyinApi.js';
+import { DouyinApi, DouyinApiOptions, VideoQuality } from '../api/douyinApi.js';
 import { BrowserController } from './browser.js';
 import chalk from 'chalk';
 

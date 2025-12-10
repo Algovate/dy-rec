@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { RecordingStatus } from '../flvRecorder.js';
+import { RecordingStatus } from '../recorders/flvRecorder.js';
 
 export interface RecordingMonitorOptions {
   maxRetries?: number;

@@ -1,10 +1,8 @@
 import ffmpeg from 'fluent-ffmpeg';
-import { FfmpegCommand } from 'fluent-ffmpeg';
 import * as path from 'path';
-import { ensureDir } from './utils.js';
+import { BaseRecorder, BaseRecorderOptions, RecordingStatus } from './baseRecorder.js';
 
-export interface FlvRecorderOptions {
-  outputDir?: string;
+export interface FlvRecorderOptions extends BaseRecorderOptions {
   onProgress?: (progress: ProgressInfo) => void;
 }
 
@@ -24,35 +22,19 @@ export interface RecordingOptions {
   format?: OutputFormat; // 输出格式：mp4（默认）、ts（边录边播）、fmp4（fragmented mp4）
 }
 
-export interface RecordingStatus {
-  isRecording: boolean;
-  duration: string;
-  startTime: number | null;
-  elapsed: number;
-}
+export { RecordingStatus };
 
 /**
  * FLV 录制模块
  * 使用 ffmpeg 直接录制 FLV 流
  */
-export class FlvRecorder {
-  private outputDir: string;
+export class FlvRecorder extends BaseRecorder {
   private onProgress?: (progress: ProgressInfo) => void;
-  private ffmpegProcess: FfmpegCommand | null = null;
-  private isRecording: boolean = false;
   private duration: string = '00:00:00';
-  private startTime: number | null = null;
 
   constructor(options: FlvRecorderOptions = {}) {
-    this.outputDir = options.outputDir || './output';
+    super(options);
     this.onProgress = options.onProgress || undefined;
-  }
-
-  /**
-   * 初始化输出目录
-   */
-  async init(): Promise<void> {
-    await ensureDir(this.outputDir);
   }
 
   /**
@@ -95,27 +77,30 @@ export class FlvRecorder {
         .on('start', (commandLine: string) => {
           console.log('[FLV Recorder] FFmpeg command:', commandLine);
         })
-        .on('progress', (progress: any) => {
-          this.duration = progress.timemark || '00:00:00';
+        .on(
+          'progress',
+          (progress: { timemark: string; currentFps?: number; currentKbps?: number }) => {
+            this.duration = progress.timemark || '00:00:00';
 
-          if (this.onProgress) {
-            this.onProgress({
-              duration: this.duration,
-              time: progress.timemark,
-              currentFps: progress.currentFps,
-              currentKbps: progress.currentKbps,
-            });
-          }
+            if (this.onProgress) {
+              this.onProgress({
+                duration: this.duration,
+                time: progress.timemark,
+                currentFps: progress.currentFps,
+                currentKbps: progress.currentKbps,
+              });
+            }
 
-          // 如果设置了录制时长，检查是否达到
-          if (duration && progress.timemark) {
-            const elapsed = this.parseTimemark(progress.timemark);
-            if (elapsed >= duration) {
-              console.log(`[FLV Recorder] Reached target duration: ${duration}s`);
-              command.kill('SIGINT'); // 优雅停止
+            // 如果设置了录制时长，检查是否达到
+            if (duration && progress.timemark) {
+              const elapsed = this.parseTimemark(progress.timemark);
+              if (elapsed >= duration) {
+                console.log(`[FLV Recorder] Reached target duration: ${duration}s`);
+                command.kill('SIGINT'); // 优雅停止
+              }
             }
           }
-        })
+        )
         .on('end', () => {
           this.isRecording = false;
           console.log('[FLV Recorder] Recording completed');
@@ -180,39 +165,12 @@ export class FlvRecorder {
   }
 
   /**
-   * 停止录制
-   */
-  async stop(): Promise<void> {
-    if (this.ffmpegProcess && this.isRecording) {
-      console.log('[FLV Recorder] Stopping recording...');
-      this.ffmpegProcess.kill('SIGINT'); // 发送中断信号以优雅停止
-      this.isRecording = false;
-    }
-  }
-
-  /**
    * 获取当前录制状态
    */
-  getStatus(): RecordingStatus {
+  override getStatus(): RecordingStatus {
     return {
-      isRecording: this.isRecording,
+      ...super.getStatus(),
       duration: this.duration,
-      startTime: this.startTime,
-      elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
     };
-  }
-
-  /**
-   * 解析时间标记为秒数
-   */
-  private parseTimemark(timemark: string): number {
-    const parts = timemark.split(':');
-    if (parts.length === 3) {
-      const hours = parseFloat(parts[0]);
-      const minutes = parseFloat(parts[1]);
-      const seconds = parseFloat(parts[2]);
-      return hours * 3600 + minutes * 60 + seconds;
-    }
-    return 0;
   }
 }

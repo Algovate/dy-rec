@@ -4,10 +4,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'node:path';
 import { ConfigManager } from './config/configManager.js';
-import { StreamDetector, DetectionMode } from './streamDetector.js';
-import { TaskManager } from './taskManager.js';
+import { StreamDetector, DetectionMode } from './core/streamDetector.js';
+import { TaskManager } from './core/taskManager.js';
 import { RoomWatcher } from './monitor/roomWatcher.js';
-import { FlvRecorder } from './flvRecorder.js';
+import { FlvRecorder } from './recorders/flvRecorder.js';
 import { M3u8Recorder } from './recorders/m3u8Recorder.js';
 import { SegmentRecorder } from './recorders/segmentRecorder.js';
 import { VideoQuality } from './api/douyinApi.js';
@@ -326,7 +326,7 @@ async function recordWithConfig(options: ConfigOptions): Promise<void> {
   }, 10000);
 
   // 等待所有任务完成（实际上会一直运行直到中断）
-  await new Promise(() => { });
+  await new Promise(() => {});
 }
 
 /**
@@ -414,7 +414,7 @@ async function watchRooms(options: WatchOptions): Promise<void> {
   });
 
   // 等待（实际上会一直运行直到中断）
-  await new Promise(() => { });
+  await new Promise(() => {});
 }
 
 /**

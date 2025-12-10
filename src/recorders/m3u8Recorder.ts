@@ -1,11 +1,9 @@
 import ffmpeg from 'fluent-ffmpeg';
-import { FfmpegCommand } from 'fluent-ffmpeg';
 import * as path from 'path';
-import { ensureDir } from '../utils.js';
-import { ProgressInfo, RecordingOptions, RecordingStatus } from '../flvRecorder.js';
+import { BaseRecorder, BaseRecorderOptions, RecordingStatus } from './baseRecorder.js';
+import { ProgressInfo, RecordingOptions } from './flvRecorder.js';
 
-export interface M3u8RecorderOptions {
-  outputDir?: string;
+export interface M3u8RecorderOptions extends BaseRecorderOptions {
   onProgress?: (progress: ProgressInfo) => void;
 }
 
@@ -13,24 +11,13 @@ export interface M3u8RecorderOptions {
  * M3U8/HLS 录制模块
  * 使用 ffmpeg 录制 HLS 流
  */
-export class M3u8Recorder {
-  private outputDir: string;
+export class M3u8Recorder extends BaseRecorder {
   private onProgress?: (progress: ProgressInfo) => void;
-  private ffmpegProcess: FfmpegCommand | null = null;
-  private isRecording: boolean = false;
   private duration: string = '00:00:00';
-  private startTime: number | null = null;
 
   constructor(options: M3u8RecorderOptions = {}) {
-    this.outputDir = options.outputDir || './output';
+    super(options);
     this.onProgress = options.onProgress || undefined;
-  }
-
-  /**
-   * 初始化输出目录
-   */
-  async init(): Promise<void> {
-    await ensureDir(this.outputDir);
   }
 
   /**
@@ -80,27 +67,30 @@ export class M3u8Recorder {
         .on('start', (commandLine: string) => {
           console.log('[M3U8 Recorder] FFmpeg command:', commandLine);
         })
-        .on('progress', (progress: any) => {
-          this.duration = progress.timemark || '00:00:00';
+        .on(
+          'progress',
+          (progress: { timemark: string; currentFps?: number; currentKbps?: number }) => {
+            this.duration = progress.timemark || '00:00:00';
 
-          if (this.onProgress) {
-            this.onProgress({
-              duration: this.duration,
-              time: progress.timemark,
-              currentFps: progress.currentFps,
-              currentKbps: progress.currentKbps,
-            });
-          }
+            if (this.onProgress) {
+              this.onProgress({
+                duration: this.duration,
+                time: progress.timemark,
+                currentFps: progress.currentFps,
+                currentKbps: progress.currentKbps,
+              });
+            }
 
-          // 如果设置了录制时长，检查是否达到
-          if (duration && progress.timemark) {
-            const elapsed = this.parseTimemark(progress.timemark);
-            if (elapsed >= duration) {
-              console.log(`[M3U8 Recorder] Reached target duration: ${duration}s`);
-              command.kill('SIGINT'); // 优雅停止
+            // 如果设置了录制时长，检查是否达到
+            if (duration && progress.timemark) {
+              const elapsed = this.parseTimemark(progress.timemark);
+              if (elapsed >= duration) {
+                console.log(`[M3U8 Recorder] Reached target duration: ${duration}s`);
+                command.kill('SIGINT'); // 优雅停止
+              }
             }
           }
-        })
+        )
         .on('end', () => {
           this.isRecording = false;
           console.log('[M3U8 Recorder] Recording completed');
@@ -172,39 +162,12 @@ export class M3u8Recorder {
   }
 
   /**
-   * 停止录制
-   */
-  async stop(): Promise<void> {
-    if (this.ffmpegProcess && this.isRecording) {
-      console.log('[M3U8 Recorder] Stopping recording...');
-      this.ffmpegProcess.kill('SIGINT'); // 发送中断信号以优雅停止
-      this.isRecording = false;
-    }
-  }
-
-  /**
    * 获取当前录制状态
    */
-  getStatus(): RecordingStatus {
+  override getStatus(): RecordingStatus {
     return {
-      isRecording: this.isRecording,
+      ...super.getStatus(),
       duration: this.duration,
-      startTime: this.startTime,
-      elapsed: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
     };
-  }
-
-  /**
-   * 解析时间标记为秒数
-   */
-  private parseTimemark(timemark: string): number {
-    const parts = timemark.split(':');
-    if (parts.length === 3) {
-      const hours = parseFloat(parts[0]);
-      const minutes = parseFloat(parts[1]);
-      const seconds = parseFloat(parts[2]);
-      return hours * 3600 + minutes * 60 + seconds;
-    }
-    return 0;
   }
 }
