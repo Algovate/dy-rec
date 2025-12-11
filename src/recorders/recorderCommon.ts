@@ -35,7 +35,6 @@ export function getStreamInputOptions(cookies?: string): string[] {
   }
 
   options.push(
-    '-re', // Read input at native frame rate
     '-rw_timeout',
     FFMPEG_RW_TIMEOUT.toString(),
     '-timeout',
@@ -81,13 +80,27 @@ export function getHlsInputOptions(cookies?: string): string[] {
  */
 export function configureCodecs(
   command: FfmpegCommand,
-  _options: RecordingOptions,
+  options: RecordingOptions,
   isHls: boolean = false
 ): FfmpegCommand {
-  if (isHls) {
-    return command.videoCodec('copy').audioCodec('copy').outputOptions(['-bsf:a', 'aac_adtstoasc']);
+  if (options.audioOnly) {
+    return command
+      .noVideo()
+      .audioCodec('aac')
+      .audioBitrate('128k')
+      .audioFrequency(44100)
+      .audioChannels(2);
+  } else if (options.videoOnly) {
+    return command.noAudio().videoCodec('copy');
   } else {
-    return command.videoCodec('copy').audioCodec('copy');
+    if (isHls) {
+      return command
+        .videoCodec('copy')
+        .audioCodec('copy')
+        .outputOptions(['-bsf:a', 'aac_adtstoasc']);
+    } else {
+      return command.videoCodec('copy').audioCodec('copy');
+    }
   }
 }
 
@@ -98,7 +111,7 @@ export function configureOutputFormat(
   command: FfmpegCommand,
   outputFilename: string,
   format: OutputFormat,
-  _options: RecordingOptions
+  options: RecordingOptions
 ): FfmpegCommand {
   const ext = path.extname(outputFilename).toLowerCase();
 
@@ -108,6 +121,13 @@ export function configureOutputFormat(
     return command
       .outputOptions(['-movflags', '+frag_keyframe+empty_moov+default_base_moof'])
       .format('mp4');
+  } else if (options.audioOnly) {
+    if (ext === '.m4a') {
+      // Use 'ipod' format for M4A audio files (proper audio-only MP4 container)
+      return command.format('ipod');
+    } else if (ext === '.mp3') {
+      return command.audioCodec('libmp3lame').audioBitrate('192k').format('mp3');
+    }
   }
 
   // Default MP4 format

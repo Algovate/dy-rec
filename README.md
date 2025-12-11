@@ -1,5 +1,7 @@
 # Douyin Live Recorder
 
+[![npm version](https://img.shields.io/npm/v/dy-rec.svg)](https://www.npmjs.com/package/dy-rec)
+
 抖音直播录制工具，支持 API 和浏览器两种模式，自动重连，多房间监控等功能。
 
 ## 特性
